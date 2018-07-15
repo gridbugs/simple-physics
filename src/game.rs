@@ -65,11 +65,11 @@ pub struct RenderUpdate<'a> {
 }
 
 fn update_player_velocity(
-    _current_velocity: Vector2<f32>,
+    current_velocity: Vector2<f32>,
     input_model: &InputModel,
 ) -> Vector2<f32> {
-    const MULTIPLIER: f32 = 4.;
-    input_model.movement() * MULTIPLIER
+    const MULTIPLIER: f32 = 0.1;
+    current_velocity + input_model.movement() * MULTIPLIER + vec2(0., 0.1)
 }
 
 #[derive(Default)]
@@ -111,6 +111,7 @@ impl EntityCommon {
 #[derive(Default)]
 pub struct GameStateChanges {
     position: Vec<(EntityId, Vector2<f32>)>,
+    velocity: Vec<(EntityId, Vector2<f32>)>,
 }
 
 pub struct GameState {
@@ -167,7 +168,7 @@ impl GameState {
     pub fn init_demo(&mut self) {
         self.clear();
         let player_id = self.add_common(EntityCommon::new(
-            vec2(180., 40.),
+            vec2(300., -200.),
             Shape::AxisAlignedRect(AxisAlignedRect::new(vec2(32., 64.))),
             [1., 0., 0.],
         ));
@@ -208,6 +209,16 @@ impl GameState {
             Shape::LineSegment(LineSegment::new(vec2(0., 90.), vec2(300., 200.))),
             [0., 1., 0.],
         ));
+        self.add_static_solid(EntityCommon::new(
+            vec2(900., 200.),
+            Shape::LineSegment(LineSegment::new(vec2(0., 0.), vec2(-300., 200.))),
+            [0., 1., 0.],
+        ));
+        self.add_static_solid(EntityCommon::new(
+            vec2(300., 500.),
+            Shape::LineSegment(LineSegment::new(vec2(0., 0.), vec2(-30., -30.))),
+            [0., 1., 0.],
+        ));
     }
     pub fn update(&mut self, input_model: &InputModel, changes: &mut GameStateChanges) {
         let player_id = self.player_id.expect("No player id");
@@ -223,6 +234,7 @@ impl GameState {
                 };
                 let new_position =
                     movement::position_after_allowde_movement(shape_position, *velocity, self);
+                changes.velocity.push((*id, new_position - common.position));
                 changes.position.push((*id, new_position));
             }
         }
@@ -230,6 +242,9 @@ impl GameState {
             if let Some(common) = self.common.get_mut(&id) {
                 common.position = position;
             }
+        }
+        for (id, velocity) in changes.velocity.drain(..) {
+            self.velocity.insert(id, velocity);
         }
     }
     pub fn render_updates(&self) -> impl Iterator<Item = RenderUpdate> {

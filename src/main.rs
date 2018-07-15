@@ -101,7 +101,7 @@ fn main() {
         encoder.clear(&render_target_view, [0.0, 0.0, 0.0, 1.0]);
         match process_input(&mut events_loop, &mut input_model) {
             Some(ExternalEvent::Quit) => break,
-            Some(ExternalEvent::Reset) => (),
+            Some(ExternalEvent::Reset) => game_state.init_demo(),
             None => (),
         }
         game_state.update(&input_model, &mut game_changes);
