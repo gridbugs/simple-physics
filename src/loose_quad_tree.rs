@@ -176,9 +176,8 @@ impl<T> LooseQuadTree<T> {
             }
         }
     }
-
-    pub fn for_each_intersection<'a, F: FnMut(&Aabb, &T)>(&'a self, aabb: Aabb) -> impl 'a + Fn(F) {
-        let root_aabb = Aabb::new(vec2(Zero::zero(), Zero::zero()), self.size);
-        move |mut f| Self::for_each_intersection_rec(&self.nodes, 0, root_aabb, &aabb, &mut f)
+    pub fn for_each_intersection<F: FnMut(&Aabb, &T)>(&self, aabb: Aabb, mut f: F) {
+        let root_aabb = Aabb::new(vec2(0., 0.), self.size);
+        Self::for_each_intersection_rec(&self.nodes, 0, root_aabb, &aabb, &mut f);
     }
 }

@@ -4,5 +4,6 @@ version = "0.1.0"
 authors = ["Stephen Sherratt <stephen@sherra.tt>"]
 
 [dependencies]
+best = "0.6"
 cgmath = "0.16"
 num = "0.2"
