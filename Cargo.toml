@@ -6,7 +6,6 @@ authors = ["Stephen Sherratt <stephen@sherra.tt>"]
 [dependencies]
 best = "0.6"
 cgmath = "0.16"
-num = "0.2"
 fnv = "1.0"
 gfx = "0.17"
 gfx_device_gl = "0.15"

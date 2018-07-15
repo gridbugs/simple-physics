@@ -8,9 +8,20 @@ pub struct CollisionInfo {
     pub slide_movement: Option<Vector2<f32>>,
 }
 
+impl CollisionInfo {
+    pub fn zero() -> Self {
+        Self {
+            magnitude2: 0.,
+            allowed_movement: vec2(0., 0.),
+            slide_movement: None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Collision {
     EdgeCollision(CollisionInfo),
+    NoMovement,
     StartInsideEdge,
 }
 
@@ -29,24 +40,12 @@ fn vector2_cross_product(v: Vector2<f32>, w: Vector2<f32>) -> f32 {
 pub const EPSILON: f32 = 0.001;
 const PADDING: f32 = 0.1;
 
-fn rot90(Vector2 { x, y }: Vector2<f32>) -> Vector2<f32> {
-    vec2(-y, x)
-}
-
 fn apply_padding_non_parallel(
-    vertex: Vector2<f32>,
+    _vertex: Vector2<f32>,
     allowed_movement: Vector2<f32>,
-    edge_direction: Vector2<f32>,
+    _edge_direction: Vector2<f32>,
 ) -> Vector2<f32> {
-    let padding = rot90(edge_direction * PADDING);
-    let collision = vertex + allowed_movement;
-    let up = collision + padding - vertex;
-    let down = collision - padding - vertex;
-    if up.magnitude2() < down.magnitude2() {
-        up
-    } else {
-        down
-    }
+    allowed_movement - allowed_movement.normalize_to(PADDING)
 }
 
 fn apply_padding_parallel(allowed_movement: Vector2<f32>) -> Vector2<f32> {
@@ -74,6 +73,9 @@ pub fn vertex_edge_collision(
     edge: LineSegment,
     what_is_moving: WhatIsMoving,
 ) -> Result<Collision, NoCollision> {
+    if movement.x.abs() < EPSILON && movement.y.abs() < EPSILON {
+        return Ok(Collision::NoMovement);
+    }
     let edge_vector = edge.vector();
     if edge_vector.x.abs() < EPSILON && edge_vector.y.abs() < EPSILON {
         return Err(NoCollision::ZeroLengthEdge);
@@ -101,6 +103,7 @@ pub fn vertex_edge_collision(
                 return Ok(Collision::StartInsideEdge);
             }
             let allowed_movement_x_movement_len2 = movement * mult_min_x_movement_len2;
+            assert!(movement_len2 != 0.);
             let allowed_movement = allowed_movement_x_movement_len2 / movement_len2;
             let with_padding = apply_padding_parallel(allowed_movement);
             Ok(Collision::EdgeCollision(CollisionInfo {
@@ -124,7 +127,16 @@ pub fn vertex_edge_collision(
         if vertex_multiplier_x_cross_abs > cross_abs + EPSILON {
             return Err(NoCollision::NonParallelNonIntersecting);
         }
+        let edge_multiplier_x_cross = vector2_cross_product(vertex_to_edge_start, movement);
+        let edge_multiplier_x_cross_abs = edge_multiplier_x_cross * cross_sign;
+        if edge_multiplier_x_cross_abs < EPSILON {
+            return Err(NoCollision::NonParallelNonIntersecting);
+        }
+        if edge_multiplier_x_cross_abs > cross_abs + EPSILON {
+            return Err(NoCollision::NonParallelNonIntersecting);
+        }
         let movement_to_intersection_point_x_cross = movement * vertex_multiplier_x_cross;
+        assert!(cross != 0.);
         let allowed_movement = movement_to_intersection_point_x_cross / cross;
         let edge_direction = edge_vector.normalize();
         let with_padding = apply_padding_non_parallel(vertex, allowed_movement, edge_direction);
@@ -178,6 +190,19 @@ mod test {
         )
     }
 
+    fn edge_moving_towards_vertex(
+        vertex: Vector2<f32>,
+        movement: Vector2<f32>,
+        edge: LineSegment,
+    ) -> Result<Collision, NoCollision> {
+        vertex_edge_collision(
+            vertex,
+            movement,
+            edge,
+            WhatIsMoving::EdgeMovingTowardsVertex,
+        )
+    }
+
     #[test]
     fn basic() {
         {
@@ -196,6 +221,10 @@ mod test {
         assert_eq!(
             vertex_moving_towards_edge(v(2., 3.), v(2., 2.), ls(v(0., 5.), v(5., 0.))),
             Ok(Collision::StartInsideEdge)
+        );
+        assert_eq!(
+            vertex_moving_towards_edge(v(-1., -4.), v(2., 0.), ls(v(0., 0.), v(0., 4.))),
+            Err(NoCollision::NonParallelNonIntersecting)
         );
     }
 
@@ -233,6 +262,7 @@ mod test {
                 Collision::EdgeCollision(CollisionInfo {
                     allowed_movement,
                     slide_movement: Some(slide_movement),
+                    ..
                 }) => {
                     assert_veq(
                         allowed_movement,
@@ -246,6 +276,7 @@ mod test {
                 Collision::EdgeCollision(CollisionInfo {
                     allowed_movement,
                     slide_movement: Some(slide_movement),
+                    ..
                 }) => {
                     assert_veq(
                         allowed_movement,

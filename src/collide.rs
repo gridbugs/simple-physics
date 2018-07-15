@@ -1,6 +1,6 @@
 use aabb::Aabb;
 use best::BestMap;
-use cgmath::{vec2, InnerSpace, Vector2};
+use cgmath::Vector2;
 use line_segment::LineSegment;
 use vertex_edge_collision::{self, Collision, CollisionInfo, WhatIsMoving};
 
@@ -28,7 +28,9 @@ fn for_each_single_direction_collision<A, B, F>(
                 abs_edge,
                 what_is_moving,
             ) {
-                Ok(collision) => f(collision),
+                Ok(collision) => {
+                    f(collision);
+                }
                 Err(_) => (),
             }
         });
@@ -92,6 +94,7 @@ pub trait Collide {
             movement,
             |collision| match collision {
                 Collision::StartInsideEdge => (),
+                Collision::NoMovement => shortest_movement.insert_le(0., CollisionInfo::zero()),
                 Collision::EdgeCollision(info) => {
                     shortest_movement.insert_le(info.magnitude2, info);
                 }

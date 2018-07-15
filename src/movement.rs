@@ -63,7 +63,7 @@ where
 pub fn position_after_allowde_movement<F>(
     shape_position: ShapePosition,
     mut movement: Vector2<f32>,
-    for_each_shape_position: F,
+    for_each_shape_position: &F,
 ) -> Vector2<f32>
 where
     F: ForEachShapePosition,
@@ -77,9 +77,12 @@ where
                 ..shape_position
             },
             movement,
-            &for_each_shape_position,
+            for_each_shape_position,
         ) {
-            None => break,
+            None => {
+                position += movement;
+                break;
+            }
             Some(CollisionInfo {
                 allowed_movement,
                 slide_movement,
@@ -88,7 +91,9 @@ where
                 position += allowed_movement;
                 match slide_movement {
                     None => break,
-                    Some(slide_movement) => movement = slide_movement,
+                    Some(slide_movement) => {
+                        movement = slide_movement;
+                    }
                 }
             }
         }
