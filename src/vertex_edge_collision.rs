@@ -40,16 +40,13 @@ fn vector2_cross_product(v: Vector2<f32>, w: Vector2<f32>) -> f32 {
 pub const EPSILON: f32 = 0.001;
 const PADDING: f32 = 0.1;
 
-fn apply_padding_non_parallel(
-    _vertex: Vector2<f32>,
-    allowed_movement: Vector2<f32>,
-    _edge_direction: Vector2<f32>,
-) -> Vector2<f32> {
-    allowed_movement - allowed_movement.normalize_to(PADDING)
-}
-
-fn apply_padding_parallel(allowed_movement: Vector2<f32>) -> Vector2<f32> {
-    allowed_movement - allowed_movement.normalize_to(PADDING)
+fn apply_padding(allowed_movement: Vector2<f32>) -> Vector2<f32> {
+    let padding = allowed_movement.normalize_to(PADDING);
+    if padding.magnitude2() > allowed_movement.magnitude2() {
+        vec2(0., 0.)
+    } else {
+        allowed_movement - allowed_movement.normalize_to(PADDING)
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -105,7 +102,7 @@ pub fn vertex_edge_collision(
             let allowed_movement_x_movement_len2 = movement * mult_min_x_movement_len2;
             assert!(movement_len2 != 0.);
             let allowed_movement = allowed_movement_x_movement_len2 / movement_len2;
-            let with_padding = apply_padding_parallel(allowed_movement);
+            let with_padding = apply_padding(allowed_movement);
             Ok(Collision::EdgeCollision(CollisionInfo {
                 magnitude2: with_padding.magnitude2(),
                 allowed_movement: with_padding * what_is_moving.multiplier(),
@@ -139,7 +136,7 @@ pub fn vertex_edge_collision(
         assert!(cross != 0.);
         let allowed_movement = movement_to_intersection_point_x_cross / cross;
         let edge_direction = edge_vector.normalize();
-        let with_padding = apply_padding_non_parallel(vertex, allowed_movement, edge_direction);
+        let with_padding = apply_padding(allowed_movement);
         let remaining_movement = movement - with_padding;
         let slide_movement = remaining_movement.project_on(edge_direction);
         let multiplier = what_is_moving.multiplier();
