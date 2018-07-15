@@ -2,12 +2,19 @@
 
 extern crate best;
 extern crate cgmath;
+extern crate fnv;
 extern crate num;
+#[macro_use]
+extern crate gfx;
+extern crate gfx_device_gl;
+extern crate gfx_window_glutin;
+extern crate glutin;
 
 mod aabb;
 mod axis_aligned_rect;
 mod collide;
 mod game;
+mod graphics;
 mod line_segment;
 mod loose_quad_tree;
 mod movement;
