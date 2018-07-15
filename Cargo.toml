@@ -1,0 +1,8 @@
+[package]
+name = "simple-physics"
+version = "0.1.0"
+authors = ["Stephen Sherratt <stephen@sherra.tt>"]
+
+[dependencies]
+cgmath = "0.16"
+num = "0.2"
