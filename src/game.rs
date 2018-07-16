@@ -1,6 +1,6 @@
 use aabb::Aabb;
 use axis_aligned_rect::AxisAlignedRect;
-use cgmath::{vec2, InnerSpace, Vector2};
+use cgmath::{vec2, ElementWise, InnerSpace, Vector2};
 use fnv::FnvHashMap;
 use line_segment::LineSegment;
 use loose_quad_tree::LooseQuadTree;
@@ -68,8 +68,8 @@ fn update_player_velocity(
     current_velocity: Vector2<f32>,
     input_model: &InputModel,
 ) -> Vector2<f32> {
-    const MULTIPLIER: f32 = 0.1;
-    current_velocity + input_model.movement() * MULTIPLIER + vec2(0., 0.1)
+    const MULTIPLIER: Vector2<f32> = Vector2 { x: 0.1, y: 0.5 };
+    current_velocity + input_model.movement().mul_element_wise(MULTIPLIER) + vec2(0., 0.1)
 }
 
 #[derive(Default)]
@@ -168,7 +168,7 @@ impl GameState {
     pub fn init_demo(&mut self) {
         self.clear();
         let player_id = self.add_common(EntityCommon::new(
-            vec2(237.9, 400.),
+            vec2(300., -200.),
             Shape::AxisAlignedRect(AxisAlignedRect::new(vec2(32., 64.))),
             [1., 0., 0.],
         ));

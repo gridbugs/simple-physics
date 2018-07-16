@@ -37,12 +37,11 @@ fn vector2_cross_product(v: Vector2<f32>, w: Vector2<f32>) -> f32 {
     v.x * w.y - v.y * w.x
 }
 
-pub const EPSILON: f32 = 0.001;
-const PADDING: f32 = 0.1;
+pub const EPSILON: f32 = 0.01;
+const PADDING: f32 = 0.2;
 
 fn apply_padding(allowed_movement: Vector2<f32>) -> Vector2<f32> {
-    let padding = allowed_movement.normalize_to(PADDING);
-    if padding.magnitude2() > allowed_movement.magnitude2() {
+    if allowed_movement.magnitude() < PADDING {
         vec2(0., 0.)
     } else {
         allowed_movement - allowed_movement.normalize_to(PADDING)
@@ -129,7 +128,7 @@ pub fn vertex_edge_collision(
         if edge_multiplier_x_cross_abs < EPSILON {
             return Err(NoCollision::NonParallelNonIntersecting);
         }
-        if edge_multiplier_x_cross_abs > cross_abs + EPSILON {
+        if edge_multiplier_x_cross_abs > cross_abs - EPSILON {
             return Err(NoCollision::NonParallelNonIntersecting);
         }
         let movement_to_intersection_point_x_cross = movement * vertex_multiplier_x_cross;
