@@ -88,7 +88,7 @@ impl EntityIdAllocator {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug)]
 struct EntityCommon {
     position: Vector2<f32>,
     shape: Shape,
@@ -168,7 +168,7 @@ impl GameState {
     pub fn init_demo(&mut self) {
         self.clear();
         let player_id = self.add_common(EntityCommon::new(
-            vec2(300., -200.),
+            vec2(237.9, 400.),
             Shape::AxisAlignedRect(AxisAlignedRect::new(vec2(32., 64.))),
             [1., 0., 0.],
         ));
