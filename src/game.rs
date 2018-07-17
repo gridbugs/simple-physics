@@ -1,6 +1,6 @@
 use aabb::Aabb;
 use axis_aligned_rect::AxisAlignedRect;
-use cgmath::{vec2, ElementWise, InnerSpace, Vector2};
+use cgmath::{ElementWise, InnerSpace, Vector2, vec2};
 use fnv::FnvHashMap;
 use line_segment::LineSegment;
 use loose_quad_tree::LooseQuadTree;
@@ -196,27 +196,27 @@ impl GameState {
         ));
         self.add_static_solid(EntityCommon::new(
             vec2(20., 20.),
-            Shape::LineSegment(LineSegment::new(vec2(0., 0.), vec2(50., 100.))),
+            Shape::LineSegment(LineSegment::new_both_solid(vec2(0., 0.), vec2(50., 100.))),
             [0., 1., 0.],
         ));
         self.add_static_solid(EntityCommon::new(
             vec2(200., 20.),
-            Shape::LineSegment(LineSegment::new(vec2(0., 0.), vec2(300., 200.))),
+            Shape::LineSegment(LineSegment::new_both_solid(vec2(0., 0.), vec2(300., 200.))),
             [0., 1., 0.],
         ));
         self.add_static_solid(EntityCommon::new(
             vec2(200., 20.),
-            Shape::LineSegment(LineSegment::new(vec2(0., 90.), vec2(300., 200.))),
+            Shape::LineSegment(LineSegment::new_both_solid(vec2(0., 90.), vec2(300., 200.))),
             [0., 1., 0.],
         ));
         self.add_static_solid(EntityCommon::new(
             vec2(900., 200.),
-            Shape::LineSegment(LineSegment::new(vec2(0., 0.), vec2(-300., 200.))),
+            Shape::LineSegment(LineSegment::new_both_solid(vec2(0., 0.), vec2(-300., 200.))),
             [0., 1., 0.],
         ));
         self.add_static_solid(EntityCommon::new(
             vec2(300., 500.),
-            Shape::LineSegment(LineSegment::new(vec2(0., 0.), vec2(-30., -30.))),
+            Shape::LineSegment(LineSegment::new_both_solid(vec2(0., 0.), vec2(-30., -30.))),
             [0., 1., 0.],
         ));
     }

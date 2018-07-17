@@ -1,5 +1,5 @@
 use aabb::Aabb;
-use cgmath::{vec2, Vector2};
+use cgmath::{Vector2, vec2};
 use collide::Collide;
 use line_segment::LineSegment;
 use vertex_edge_collision::EPSILON;
@@ -26,16 +26,16 @@ impl AxisAlignedRect {
         self.dimensions
     }
     fn top(&self) -> LineSegment {
-        LineSegment::new(self.top_left(), self.top_right())
+        LineSegment::new_left_solid(self.top_left(), self.top_right())
     }
     fn right(&self) -> LineSegment {
-        LineSegment::new(self.top_right(), self.bottom_right())
+        LineSegment::new_left_solid(self.top_right(), self.bottom_right())
     }
     fn bottom(&self) -> LineSegment {
-        LineSegment::new(self.bottom_right(), self.bottom_left())
+        LineSegment::new_left_solid(self.bottom_right(), self.bottom_left())
     }
     fn left(&self) -> LineSegment {
-        LineSegment::new(self.bottom_left(), self.top_left())
+        LineSegment::new_left_solid(self.bottom_left(), self.top_left())
     }
     pub fn dimensions(&self) -> Vector2<f32> {
         self.dimensions

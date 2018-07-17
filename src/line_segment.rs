@@ -1,21 +1,40 @@
 use aabb::Aabb;
-use cgmath::{vec2, Vector2};
+use cgmath::{Vector2, vec2};
 use collide::Collide;
+
+#[derive(Debug, Clone, Copy)]
+pub enum SolidSide {
+    Left,
+    Both,
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct LineSegment {
     pub start: Vector2<f32>,
     pub end: Vector2<f32>,
+    pub solid_side: SolidSide,
 }
 
 impl LineSegment {
-    pub fn new(start: Vector2<f32>, end: Vector2<f32>) -> Self {
-        Self { start, end }
+    pub fn new_both_solid(start: Vector2<f32>, end: Vector2<f32>) -> Self {
+        Self {
+            start,
+            end,
+            solid_side: SolidSide::Both,
+        }
+    }
+    pub fn new_left_solid(start: Vector2<f32>, end: Vector2<f32>) -> Self {
+        Self {
+            start,
+            end,
+            solid_side: SolidSide::Left,
+        }
     }
     pub fn add_vector(&self, vector: Vector2<f32>) -> Self {
         Self {
             start: self.start + vector,
             end: self.end + vector,
+            solid_side: self.solid_side,
         }
     }
     pub fn vector(&self) -> Vector2<f32> {
