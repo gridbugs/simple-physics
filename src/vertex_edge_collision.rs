@@ -1,4 +1,4 @@
-use cgmath::{vec2, InnerSpace, Vector2};
+use cgmath::{InnerSpace, Vector2, vec2};
 use line_segment::LineSegment;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -125,10 +125,10 @@ pub fn vertex_edge_collision(
         }
         let edge_multiplier_x_cross = vector2_cross_product(vertex_to_edge_start, movement);
         let edge_multiplier_x_cross_abs = edge_multiplier_x_cross * cross_sign;
-        if edge_multiplier_x_cross_abs < EPSILON {
+        if edge_multiplier_x_cross_abs < -EPSILON {
             return Err(NoCollision::NonParallelNonIntersecting);
         }
-        if edge_multiplier_x_cross_abs > cross_abs - EPSILON {
+        if edge_multiplier_x_cross_abs > cross_abs + EPSILON {
             return Err(NoCollision::NonParallelNonIntersecting);
         }
         let movement_to_intersection_point_x_cross = movement * vertex_multiplier_x_cross;
