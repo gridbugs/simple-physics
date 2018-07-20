@@ -15,6 +15,7 @@ mod collide;
 mod game;
 mod glutin_window;
 mod graphics;
+mod left_solid_edge;
 mod line_segment;
 mod loose_quad_tree;
 mod movement;
