@@ -1,6 +1,7 @@
 use aabb::Aabb;
-use best::BestMap;
+use best::{BestMap, BestSet};
 use cgmath::Vector2;
+use left_solid_edge::{CollisionMovement, MovementWithSlide, EPSILON};
 use shape::Shape;
 use vertex_edge_collision::CollisionInfo;
 
@@ -26,9 +27,13 @@ impl<'a> ShapePosition<'a> {
         &self,
         other: ShapePosition,
         movement: Vector2<f32>,
-    ) -> Option<CollisionInfo> {
-        self.shape
-            .movement_collision_test(self.position, other.shape, other.position, movement)
+    ) -> MovementWithSlide {
+        self.shape.movement_collision_test(
+            self.position,
+            other.shape,
+            other.position,
+            movement,
+        )
     }
 }
 
@@ -40,24 +45,24 @@ fn allowed_movement_step<F>(
     shape_position: ShapePosition,
     movement: Vector2<f32>,
     for_each_shape_position: &F,
-) -> Option<CollisionInfo>
+) -> MovementWithSlide
 where
     F: ForEachShapePosition,
 {
-    let mut closest_collision = BestMap::new();
+    let mut shortest_movement = BestSet::new();
     for_each_shape_position.for_each(
         shape_position.movement_aabb(movement),
         |other_shape_position: ShapePosition| {
             if other_shape_position.entity_id != shape_position.entity_id {
-                if let Some(movement) =
-                    shape_position.movement_collision_test(other_shape_position, movement)
-                {
-                    closest_collision.insert_le(movement.magnitude2, movement);
-                }
+                let movement = shape_position
+                    .movement_collision_test(other_shape_position, movement);
+                shortest_movement.insert_le(movement);
             }
         },
     );
-    closest_collision.into_value()
+    shortest_movement
+        .into_value()
+        .unwrap_or_else(|| MovementWithSlide::new_just_movement(movement))
 }
 
 pub fn position_after_allowde_movement<F>(
@@ -71,31 +76,19 @@ where
     let mut position = shape_position.position;
     const MAX_ITERATIONS: usize = 16;
     for _ in 0..MAX_ITERATIONS {
-        match allowed_movement_step(
+        let allowed_movement = allowed_movement_step(
             ShapePosition {
                 position,
                 ..shape_position
             },
             movement,
             for_each_shape_position,
-        ) {
-            None => {
-                position += movement;
-                break;
-            }
-            Some(CollisionInfo {
-                allowed_movement,
-                slide_movement,
-                ..
-            }) => {
-                position += allowed_movement;
-                match slide_movement {
-                    None => break,
-                    Some(slide_movement) => {
-                        movement = slide_movement;
-                    }
-                }
-            }
+        );
+        position += allowed_movement.movement.vector();
+        if allowed_movement.slide.magnitude2() > EPSILON {
+            movement = allowed_movement.slide.vector();
+        } else {
+            break;
         }
     }
     position

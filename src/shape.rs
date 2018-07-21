@@ -2,6 +2,7 @@ use aabb::Aabb;
 use axis_aligned_rect::AxisAlignedRect;
 use cgmath::Vector2;
 use collide::Collide;
+use left_solid_edge::MovementWithSlide;
 use line_segment::LineSegment;
 use vertex_edge_collision::CollisionInfo;
 
@@ -24,16 +25,17 @@ impl Shape {
         stationary: &Self,
         stationary_position: Vector2<f32>,
         movement_vector: Vector2<f32>,
-    ) -> Option<CollisionInfo> {
+    ) -> MovementWithSlide {
         match self {
             &Shape::AxisAlignedRect(ref moving) => match stationary {
-                &Shape::AxisAlignedRect(ref stationary) => moving.movement_collision_test(
-                    position,
-                    stationary,
-                    stationary_position,
-                    movement_vector,
-                ),
-                &Shape::LineSegment(ref stationary) => moving.movement_collision_test(
+                &Shape::AxisAlignedRect(ref stationary) => moving
+                    .movement_collision_test_(
+                        position,
+                        stationary,
+                        stationary_position,
+                        movement_vector,
+                    ),
+                &Shape::LineSegment(ref stationary) => moving.movement_collision_test_(
                     position,
                     stationary,
                     stationary_position,

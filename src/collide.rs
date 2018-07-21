@@ -1,8 +1,8 @@
 use aabb::Aabb;
-use best::BestMap;
+use best::{BestMap, BestSet};
 use cgmath::Vector2;
+use left_solid_edge::{CollisionMovement, LeftSolidEdge, MovementWithSlide};
 use line_segment::LineSegment;
-use left_solid_edge::LeftSolidEdge;
 use vertex_edge_collision::{self, Collision, CollisionInfo, WhatIsMoving};
 
 fn for_each_single_direction_collision<A, B, F>(
@@ -113,5 +113,24 @@ pub trait Collide {
             },
         );
         shortest_movement.into_value()
+    }
+
+    fn movement_collision_test_<StationaryShape>(
+        &self,
+        position: Vector2<f32>,
+        stationary_shape: &StationaryShape,
+        stationary_position: Vector2<f32>,
+        movement: Vector2<f32>,
+    ) -> MovementWithSlide
+    where
+        Self: Sized,
+        StationaryShape: Collide,
+    {
+        let shortest_movement: BestSet<CollisionMovement> = BestSet::new();
+
+        shortest_movement
+            .into_value()
+            .map(|c| c.movement)
+            .unwrap_or_else(|| MovementWithSlide::new_just_movement(movement))
     }
 }
