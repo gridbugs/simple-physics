@@ -67,7 +67,9 @@ pub trait Collide {
             stationary_shape,
             stationary_position,
             movement,
-            |collision_movement| shortest_movement.insert_le(collision_movement),
+            |collision_movement| {
+                shortest_movement.insert_le(collision_movement);
+            },
         );
 
         shortest_movement

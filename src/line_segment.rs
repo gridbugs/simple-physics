@@ -53,10 +53,13 @@ impl Collide for LineSegment {
     fn aabb(&self, top_left: Vector2<f64>) -> Aabb {
         let start = self.start + top_left;
         let end = self.end + top_left;
-        let x_min = start.x.min(end.x);
-        let x_max = start.x.max(end.x);
-        let y_min = start.y.min(end.y);
-        let y_max = start.y.max(end.y);
+        // XXX the +/- 1 is because of how edges are computed.
+        // Currentyl they push the corners of the thin rectangle
+        // representing the line outside the normal bounding box.
+        let x_min = start.x.min(end.x) - 1.;
+        let x_max = start.x.max(end.x) + 1.;
+        let y_min = start.y.min(end.y) - 1.;
+        let y_max = start.y.max(end.y) + 1.;
         let top_left = vec2(x_min, y_min);
         let bottom_right = vec2(x_max, y_max);
         Aabb::new(top_left, bottom_right - top_left)
@@ -86,7 +89,11 @@ impl Collide for LineSegment {
     ) {
         let vector = self.vector();
         let left = vec2(-vector.y, vector.x).normalize();
-        f(self.add_vector(left).left_solid_edge_flipped());
-        f(self.add_vector(-left).left_solid_edge());
+        let a = self.add_vector(left).left_solid_edge_flipped();
+        let b = self.add_vector(-left).left_solid_edge();
+        f(a);
+        f(b);
+        f(LeftSolidEdge::new(a.end, b.start));
+        f(LeftSolidEdge::new(b.end, a.start));
     }
 }

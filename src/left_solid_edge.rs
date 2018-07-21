@@ -48,7 +48,7 @@ pub enum NoCollision {
     ParallelNonColinear,
     ColinearNonOverlapping,
     OutsideMovement,
-    InsideMovementOutsideEdge,
+    OutsideEdge,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -213,7 +213,8 @@ impl LeftSolidEdge {
             let corrected_vertex =
                 self.start - vertex_to_start.project_on(edge_direction);
             let corrected_destination = corrected_vertex + corrected_movement;
-            let actual_movement = corrected_destination - vertex;
+            let actual_movement = (corrected_destination - vertex)
+                .normalize_to(vertex_movement.magnitude() - EPSILON);
             let movement = CollisionMovement {
                 movement: MovementWithSlide {
                     movement: Vector2WithMagnitude2::from_vector(actual_movement),
@@ -230,7 +231,7 @@ impl LeftSolidEdge {
         if edge_vertex_multiplier < -EPSILON || edge_vertex_multiplier > 1. + EPSILON {
             return CollisionMovement::from_movement_vector(
                 vertex_movement,
-                NoCollision::InsideMovementOutsideEdge,
+                NoCollision::OutsideEdge,
             );
         }
 
@@ -318,12 +319,13 @@ mod test {
         let e = edge(vec2(0., 0.), vec2(0., 10.));
         let v = vec2(5., 15.);
         let m = vec2(-10., 0.);
-        assert_eq!(
-            e.vertex_collision_vertex_is_moving(v, m)
-                .collision
-                .unwrap_err(),
-            NoCollision::InsideMovementOutsideEdge
-        );
+        match e.vertex_collision_vertex_is_moving(v, m)
+            .collision
+            .unwrap_err()
+        {
+            NoCollision::OutsideEdge => (),
+            _ => panic!(),
+        }
     }
 
     #[test]
@@ -331,12 +333,13 @@ mod test {
         let e = edge(vec2(0., 0.), vec2(0., 10.));
         let v = vec2(1., 0.);
         let m = vec2(0., 1.);
-        assert_eq!(
-            e.vertex_collision_vertex_is_moving(v, m)
-                .collision
-                .unwrap_err(),
-            NoCollision::ParallelNonColinear
-        );
+        match e.vertex_collision_vertex_is_moving(v, m)
+            .collision
+            .unwrap_err()
+        {
+            NoCollision::ParallelNonColinear => (),
+            _ => panic!(),
+        }
     }
 
     #[test]
