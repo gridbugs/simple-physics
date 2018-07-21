@@ -75,6 +75,7 @@ where
 {
     let mut position = shape_position.position;
     const MAX_ITERATIONS: usize = 16;
+    println!("moving -------------");
     for _ in 0..MAX_ITERATIONS {
         let allowed_movement = allowed_movement_step(
             ShapePosition {
@@ -86,6 +87,7 @@ where
         );
         position += allowed_movement.movement.vector();
         if allowed_movement.slide.magnitude2() > EPSILON {
+            println!("sliding ###########");
             movement = allowed_movement.slide.vector();
         } else {
             break;

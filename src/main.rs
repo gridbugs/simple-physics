@@ -90,7 +90,8 @@ fn main() {
         ..
     } = GlutinWindow::new(width, height);
 
-    let mut renderer = Renderer::new(render_target_view.clone(), &mut factory, &mut encoder);
+    let mut renderer =
+        Renderer::new(render_target_view.clone(), &mut factory, &mut encoder);
 
     let mut game_state = GameState::new(vec2(width as f32, height as f32));
     let mut game_changes = GameStateChanges::default();
@@ -111,9 +112,11 @@ fn main() {
             let mut updater = frame.updater();
             for update in game_state.render_updates() {
                 match update.shape {
-                    &Shape::AxisAlignedRect(ref rect) => {
-                        updater.axis_aligned_rect(update.position, rect.dimensions(), update.colour)
-                    }
+                    &Shape::AxisAlignedRect(ref rect) => updater.axis_aligned_rect(
+                        update.position,
+                        rect.dimensions(),
+                        update.colour,
+                    ),
                     &Shape::LineSegment(ref line_segment) => updater.line_segment(
                         line_segment.start + update.position,
                         line_segment.end + update.position,
@@ -126,5 +129,6 @@ fn main() {
         encoder.flush(&mut device);
         window.swap_buffers().expect("Failed to swap buffers");
         device.cleanup();
+        //        ::std::thread::sleep(::std::time::Duration::from_millis(100));
     }
 }

@@ -168,7 +168,7 @@ impl GameState {
     pub fn init_demo(&mut self) {
         self.clear();
         let player_id = self.add_common(EntityCommon::new(
-            vec2(300., -200.),
+            vec2(300., 0.),
             Shape::AxisAlignedRect(AxisAlignedRect::new(vec2(32., 64.))),
             [1., 0., 0.],
         ));
@@ -182,7 +182,7 @@ impl GameState {
         self.add_static_solid(EntityCommon::new(
             vec2(150., 250.),
             Shape::AxisAlignedRect(AxisAlignedRect::new(vec2(500., 20.))),
-            [1., 1., 0.],
+            [1., 1., 1.],
         ));
         self.add_static_solid(EntityCommon::new(
             vec2(50., 450.),
@@ -196,27 +196,39 @@ impl GameState {
         ));
         self.add_static_solid(EntityCommon::new(
             vec2(20., 20.),
-            Shape::LineSegment(LineSegment::new_both_solid(vec2(0., 0.), vec2(50., 100.))),
+            Shape::LineSegment(LineSegment::new_both_solid(
+                vec2(0., 0.),
+                vec2(50., 100.),
+            )),
             [0., 1., 0.],
         ));
         self.add_static_solid(EntityCommon::new(
             vec2(200., 20.),
-            Shape::LineSegment(LineSegment::new_both_solid(vec2(0., 0.), vec2(300., 200.))),
+            Shape::LineSegment(LineSegment::new_both_solid(
+                vec2(0., 0.),
+                vec2(300., 200.),
+            )),
             [0., 1., 0.],
         ));
         self.add_static_solid(EntityCommon::new(
             vec2(200., 20.),
-            Shape::LineSegment(LineSegment::new_both_solid(vec2(0., 90.), vec2(300., 200.))),
+            Shape::LineSegment(LineSegment::new_both_solid(
+                vec2(0., 120.),
+                vec2(300., 200.),
+            )),
             [0., 1., 0.],
         ));
         self.add_static_solid(EntityCommon::new(
             vec2(900., 200.),
-            Shape::LineSegment(LineSegment::new_both_solid(vec2(0., 0.), vec2(-300., 200.))),
+            Shape::LineSegment(LineSegment::new_both_solid(
+                vec2(0., 0.),
+                vec2(-300., 200.),
+            )),
             [0., 1., 0.],
         ));
         self.add_static_solid(EntityCommon::new(
-            vec2(300., 500.),
-            Shape::LineSegment(LineSegment::new_both_solid(vec2(0., 0.), vec2(-30., -30.))),
+            vec2(300., 470.),
+            Shape::LineSegment(LineSegment::new_both_solid(vec2(0., 0.), vec2(30., 30.))),
             [0., 1., 0.],
         ));
     }
@@ -232,8 +244,11 @@ impl GameState {
                     position: common.position,
                     shape: &common.shape,
                 };
-                let new_position =
-                    movement::position_after_allowde_movement(shape_position, *velocity, self);
+                let new_position = movement::position_after_allowde_movement(
+                    shape_position,
+                    *velocity,
+                    self,
+                );
                 changes.velocity.push((*id, new_position - common.position));
                 changes.position.push((*id, new_position));
             }

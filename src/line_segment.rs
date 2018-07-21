@@ -1,7 +1,7 @@
 use aabb::Aabb;
-use cgmath::{Vector2, vec2};
+use cgmath::{InnerSpace, Vector2, vec2};
 use collide::Collide;
-use left_solid_edge::LeftSolidEdge;
+use left_solid_edge::{LeftSolidEdge, vector2_cross_product, EPSILON};
 
 #[derive(Debug, Clone, Copy)]
 pub enum SolidSide {
@@ -41,6 +41,12 @@ impl LineSegment {
     pub fn vector(&self) -> Vector2<f32> {
         self.end - self.start
     }
+    fn left_solid_edge(&self) -> LeftSolidEdge {
+        LeftSolidEdge::new(self.start, self.end)
+    }
+    fn left_solid_edge_flipped(&self) -> LeftSolidEdge {
+        LeftSolidEdge::new(self.end, self.start)
+    }
 }
 
 impl Collide for LineSegment {
@@ -64,17 +70,23 @@ impl Collide for LineSegment {
     }
     fn for_each_vertex_facing<F: FnMut(Vector2<f32>)>(
         &self,
-        _direction: Vector2<f32>,
+        direction: Vector2<f32>,
         mut f: F,
     ) {
-        f(self.start);
-        f(self.end);
+        self.for_each_left_solid_edge_facing(direction, |edge| {
+            f(edge.start);
+            f(edge.end);
+        });
     }
 
     fn for_each_left_solid_edge_facing<F: FnMut(LeftSolidEdge)>(
         &self,
         direction: Vector2<f32>,
-        f: F,
+        mut f: F,
     ) {
+        let vector = self.vector();
+        let left = vec2(-vector.y, vector.x).normalize();
+        f(self.add_vector(left).left_solid_edge_flipped());
+        f(self.add_vector(-left).left_solid_edge());
     }
 }

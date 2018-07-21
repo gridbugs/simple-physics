@@ -1,4 +1,4 @@
-use cgmath::{vec2, Vector2};
+use cgmath::{Vector2, vec2};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Aabb {
@@ -17,7 +17,10 @@ impl Aabb {
     pub fn new(top_left: Vector2<f32>, size: Vector2<f32>) -> Self {
         Self { top_left, size }
     }
-    pub fn from_centre_and_half_size(centre: Vector2<f32>, half_size: Vector2<f32>) -> Self {
+    pub fn from_centre_and_half_size(
+        centre: Vector2<f32>,
+        half_size: Vector2<f32>,
+    ) -> Self {
         let top_left = centre - half_size;
         let size = half_size * 2.;
         Self::new(top_left, size)

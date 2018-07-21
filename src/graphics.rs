@@ -6,12 +6,13 @@ pub mod formats {
 
 mod consts {
     pub const QUAD_INDICES: [u16; 6] = [0, 1, 2, 2, 3, 0];
-    pub const QUAD_COORDS: [[f32; 2]; 4] = [[0.0, 0.0], [0.0, 1.0], [1.0, 1.0], [1.0, 0.0]];
+    pub const QUAD_COORDS: [[f32; 2]; 4] =
+        [[0.0, 0.0], [0.0, 1.0], [1.0, 1.0], [1.0, 0.0]];
 }
 
 mod dimensions {
     use super::formats;
-    use cgmath::{vec2, Vector2};
+    use cgmath::{Vector2, vec2};
     use gfx;
     pub fn rtv_dimensions<R: gfx::Resources>(
         rtv: &gfx::handle::RenderTargetView<R, formats::Colour>,
@@ -52,7 +53,10 @@ mod buffer_alloc {
     pub fn create_instance_and_upload_buffers<R, F, T>(
         size: usize,
         factory: &mut F,
-    ) -> Result<(gfx::handle::Buffer<R, T>, gfx::handle::Buffer<R, T>), gfx::buffer::CreationError>
+    ) -> Result<
+        (gfx::handle::Buffer<R, T>, gfx::handle::Buffer<R, T>),
+        gfx::buffer::CreationError,
+    >
     where
         R: gfx::Resources,
         F: gfx::Factory<R> + gfx::traits::FactoryExt<R>,
@@ -83,7 +87,10 @@ mod buffer_alloc {
             })
             .collect::<Vec<_>>();
 
-        factory.create_vertex_buffer_with_slice(&quad_corners_data, &consts::QUAD_INDICES[..])
+        factory.create_vertex_buffer_with_slice(
+            &quad_corners_data,
+            &consts::QUAD_INDICES[..],
+        )
     }
     pub fn create_window_property_buffer<R, F>(
         factory: &mut F,
@@ -109,7 +116,9 @@ mod instance_renderer {
     }
     pub trait PipelineData<R: gfx::Resources>: gfx::pso::PipelineData<R> {
         type Instance: Copy + gfx::traits::Pod;
-        type PipeInit: gfx::pso::PipelineInit<Meta = <Self as gfx::pso::PipelineData<R>>::Meta>;
+        type PipeInit: gfx::pso::PipelineInit<
+            Meta = <Self as gfx::pso::PipelineData<R>>::Meta,
+        >;
         fn new_data(
             corners: gfx::handle::Buffer<R, buffer_types::QuadCorners>,
             instances: gfx::handle::Buffer<R, Self::Instance>,
@@ -147,8 +156,10 @@ mod instance_renderer {
                 buffer_alloc::create_corner_vertex_buffer_with_slice(factory);
 
             let (instances, instances_upload) =
-                buffer_alloc::create_instance_and_upload_buffers(MAX_NUM_INSTANCES, factory)
-                    .expect("Failed to create buffers");
+                buffer_alloc::create_instance_and_upload_buffers(
+                    MAX_NUM_INSTANCES,
+                    factory,
+                ).expect("Failed to create buffers");
             let data = <D as PipelineData<R>>::new_data(
                 quad_corners_buf,
                 instances,
@@ -164,7 +175,10 @@ mod instance_renderer {
             }
         }
 
-        pub fn instance_writer<F>(&mut self, factory: &mut F) -> InstanceWriter<R, D::Instance>
+        pub fn instance_writer<F>(
+            &mut self,
+            factory: &mut F,
+        ) -> InstanceWriter<R, D::Instance>
         where
             F: gfx::Factory<R> + gfx::traits::FactoryExt<R>,
         {
@@ -371,7 +385,12 @@ impl<'a> FrameUpdater<'a> {
             quad.colour = colour;
         }
     }
-    pub fn line_segment(&mut self, start: Vector2<f32>, end: Vector2<f32>, colour: [f32; 3]) {
+    pub fn line_segment(
+        &mut self,
+        start: Vector2<f32>,
+        end: Vector2<f32>,
+        colour: [f32; 3],
+    ) {
         if let Some(line_segment) = self.line_segment.next() {
             line_segment.start = start.into();
             line_segment.end = end.into();
@@ -403,7 +422,11 @@ impl<R: gfx::Resources> Renderer<R> {
         );
         Self {
             quad: quad::Renderer::new(&colour_rtv, &window_properties, factory),
-            line_segment: line_segment::Renderer::new(&colour_rtv, &window_properties, factory),
+            line_segment: line_segment::Renderer::new(
+                &colour_rtv,
+                &window_properties,
+                factory,
+            ),
         }
     }
     pub fn prepare_frame<F>(&mut self, factory: &mut F) -> Frame<R>

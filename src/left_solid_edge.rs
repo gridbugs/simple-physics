@@ -1,10 +1,12 @@
-use cgmath::{vec2, InnerSpace, Vector2};
+use cgmath::{InnerSpace, Vector2, vec2};
 use std::cmp::Ordering;
 
-#[derive(Debug)]
+pub const EPSILON: f32 = 0.01;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LeftSolidEdge {
-    start: Vector2<f32>,
-    end: Vector2<f32>,
+    pub start: Vector2<f32>,
+    pub end: Vector2<f32>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -40,24 +42,24 @@ impl Vector2WithMagnitude2 {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum NoCollision {
-    ImpossibleDirection,
+    ImpossibleDirection(LeftSolidEdge, Vector2<f32>, Vector2<f32>),
     ParallelNonColinear,
     ColinearNonOverlapping,
-    OutsideMovement,
-    InsideMovementOutsideEdge,
+    OutsideMovement(LeftSolidEdge, Vector2<f32>, Vector2<f32>),
+    InsideMovementOutsideEdge(f32),
     NothingToCollideWith,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Collision {
     ColinearCourseAdjustment,
-    SlideAlongEdge,
+    SlideAlongEdge(LeftSolidEdge, Vector2<f32>, Vector2<f32>),
     MoveUntilEdgeThenSlide,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum WhatMoved {
     Vertex,
     Edge,
@@ -99,6 +101,17 @@ pub struct CollisionMovement {
 
 impl PartialOrd for CollisionMovement {
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
+        return match self.movement
+            .movement
+            .magnitude2
+            .partial_cmp(&rhs.movement.movement.magnitude2)
+        {
+            Some(Ordering::Equal) => rhs.movement
+                .slide
+                .magnitude2
+                .partial_cmp(&self.movement.slide.magnitude2),
+            other => other,
+        };
         let movement_diff =
             self.movement.movement.magnitude2 - rhs.movement.movement.magnitude2;
         if movement_diff < -EPSILON {
@@ -143,9 +156,7 @@ impl CollisionMovement {
     }
 }
 
-pub const EPSILON: f32 = 0.01;
-
-fn vector2_cross_product(v: Vector2<f32>, w: Vector2<f32>) -> f32 {
+pub fn vector2_cross_product(v: Vector2<f32>, w: Vector2<f32>) -> f32 {
     v.x * w.y - v.y * w.x
 }
 
@@ -153,6 +164,13 @@ impl LeftSolidEdge {
     pub fn new(start: Vector2<f32>, end: Vector2<f32>) -> Self {
         Self { start, end }
     }
+    pub fn add_vector(&self, vector: Vector2<f32>) -> Self {
+        Self {
+            start: self.start + vector,
+            end: self.end + vector,
+        }
+    }
+
     fn vector(&self) -> Vector2<f32> {
         self.end - self.start
     }
@@ -177,7 +195,7 @@ impl LeftSolidEdge {
         if cross > EPSILON {
             return CollisionMovement::from_movement_vector(
                 vertex_movement,
-                NoCollision::ImpossibleDirection,
+                NoCollision::ImpossibleDirection(*self, vertex, vertex_movement),
             );
         }
 
@@ -212,25 +230,25 @@ impl LeftSolidEdge {
             }
 
             let edge_direction = edge_vector.normalize();
-            return CollisionMovement {
+            let corrected_movement = vertex_movement.project_on(edge_direction);
+            let corrected_vertex =
+                self.start - vertex_to_start.project_on(edge_direction);
+            println!("corrected_movement {:?}", corrected_movement);
+            println!("corrected_vertex {:?}", corrected_vertex);
+            println!("vertex {:?}", vertex);
+            println!("edge {:?}", self);
+            let corrected_destination = corrected_vertex + corrected_movement;
+            let actual_movement = corrected_destination - vertex;
+            let movement = CollisionMovement {
                 movement: MovementWithSlide {
-                    movement: Vector2WithMagnitude2::from_vector(
-                        vertex_movement.project_on(edge_direction),
-                    ),
+                    movement: Vector2WithMagnitude2::from_vector(actual_movement),
                     slide: Vector2WithMagnitude2::zero(),
                 },
                 collision: Ok(Collision::ColinearCourseAdjustment),
                 what_moved: WhatMoved::Vertex,
             };
-        }
-
-        let movement_multiplier =
-            vector2_cross_product(vertex_to_start, edge_vector) / cross;
-        if movement_multiplier < -EPSILON || movement_multiplier > 1. + EPSILON {
-            return CollisionMovement::from_movement_vector(
-                vertex_movement,
-                NoCollision::OutsideMovement,
-            );
+            println!("movement {:?}", movement);
+            return movement;
         }
 
         let edge_vertex_multiplier =
@@ -238,13 +256,18 @@ impl LeftSolidEdge {
         if edge_vertex_multiplier < -EPSILON || edge_vertex_multiplier > 1. + EPSILON {
             return CollisionMovement::from_movement_vector(
                 vertex_movement,
-                NoCollision::InsideMovementOutsideEdge,
+                NoCollision::InsideMovementOutsideEdge(edge_vertex_multiplier),
             );
         }
 
         let edge_direction = edge_vector.normalize();
 
-        if movement_multiplier < EPSILON {
+        let movement_multiplier =
+            vector2_cross_product(vertex_to_start, edge_vector) / cross;
+
+        println!("movement_multiplier {:?}", movement_multiplier);
+
+        if movement_multiplier < EPSILON && movement_multiplier > -EPSILON {
             return CollisionMovement {
                 movement: MovementWithSlide {
                     movement: Vector2WithMagnitude2::zero(),
@@ -252,12 +275,20 @@ impl LeftSolidEdge {
                         vertex_movement.project_on(edge_direction),
                     ),
                 },
-                collision: Ok(Collision::SlideAlongEdge),
+                collision: Ok(Collision::SlideAlongEdge(*self, vertex, vertex_movement)),
                 what_moved: WhatMoved::Vertex,
             };
         }
 
+        if movement_multiplier < -EPSILON || movement_multiplier > 1. + EPSILON {
+            return CollisionMovement::from_movement_vector(
+                vertex_movement,
+                NoCollision::OutsideMovement(*self, vertex, vertex_movement),
+            );
+        }
+
         let movement = vertex_movement * movement_multiplier;
+
         let remaining_movement = vertex_movement * (1. - movement_multiplier).max(0.);
         CollisionMovement {
             movement: MovementWithSlide {
