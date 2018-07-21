@@ -44,18 +44,17 @@ impl Vector2WithMagnitude2 {
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum NoCollision {
-    ImpossibleDirection(LeftSolidEdge, Vector2<f64>, Vector2<f64>),
+    ImpossibleDirection,
     ParallelNonColinear,
     ColinearNonOverlapping,
-    OutsideMovement(LeftSolidEdge, Vector2<f64>, Vector2<f64>),
-    InsideMovementOutsideEdge(f64),
-    NothingToCollideWith,
+    OutsideMovement,
+    InsideMovementOutsideEdge,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Collision {
     ColinearCourseAdjustment,
-    SlideAlongEdge(LeftSolidEdge, Vector2<f64>, Vector2<f64>),
+    SlideAlongEdge,
     MoveUntilEdgeThenSlide,
 }
 
@@ -101,7 +100,7 @@ pub struct CollisionMovement {
 
 impl PartialOrd for CollisionMovement {
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
-        return match self.movement
+        match self.movement
             .movement
             .magnitude2
             .partial_cmp(&rhs.movement.movement.magnitude2)
@@ -111,27 +110,7 @@ impl PartialOrd for CollisionMovement {
                 .magnitude2
                 .partial_cmp(&self.movement.slide.magnitude2),
             other => other,
-        };
-        let movement_diff =
-            self.movement.movement.magnitude2 - rhs.movement.movement.magnitude2;
-        if movement_diff < -EPSILON {
-            return Some(Ordering::Less);
         }
-        if movement_diff > EPSILON {
-            return Some(Ordering::Greater);
-        }
-
-        match (self.what_moved, rhs.what_moved) {
-            (WhatMoved::Vertex, WhatMoved::Edge) => {
-                return Some(Ordering::Greater);
-            }
-            (WhatMoved::Edge, WhatMoved::Vertex) => {
-                return Some(Ordering::Less);
-            }
-            _ => (),
-        }
-
-        None
     }
 }
 
@@ -195,7 +174,7 @@ impl LeftSolidEdge {
         if cross > EPSILON {
             return CollisionMovement::from_movement_vector(
                 vertex_movement,
-                NoCollision::ImpossibleDirection(*self, vertex, vertex_movement),
+                NoCollision::ImpossibleDirection,
             );
         }
 
@@ -233,10 +212,6 @@ impl LeftSolidEdge {
             let corrected_movement = vertex_movement.project_on(edge_direction);
             let corrected_vertex =
                 self.start - vertex_to_start.project_on(edge_direction);
-            println!("corrected_movement {:?}", corrected_movement);
-            println!("corrected_vertex {:?}", corrected_vertex);
-            println!("vertex {:?}", vertex);
-            println!("edge {:?}", self);
             let corrected_destination = corrected_vertex + corrected_movement;
             let actual_movement = corrected_destination - vertex;
             let movement = CollisionMovement {
@@ -247,7 +222,6 @@ impl LeftSolidEdge {
                 collision: Ok(Collision::ColinearCourseAdjustment),
                 what_moved: WhatMoved::Vertex,
             };
-            println!("movement {:?}", movement);
             return movement;
         }
 
@@ -256,7 +230,7 @@ impl LeftSolidEdge {
         if edge_vertex_multiplier < EPSILON || edge_vertex_multiplier > 1. - EPSILON {
             return CollisionMovement::from_movement_vector(
                 vertex_movement,
-                NoCollision::InsideMovementOutsideEdge(edge_vertex_multiplier),
+                NoCollision::InsideMovementOutsideEdge,
             );
         }
 
@@ -264,8 +238,6 @@ impl LeftSolidEdge {
 
         let movement_multiplier =
             vector2_cross_product(vertex_to_start, edge_vector) / cross;
-
-        println!("movement_multiplier {:?}", movement_multiplier);
 
         if movement_multiplier < EPSILON && movement_multiplier > -EPSILON {
             return CollisionMovement {
@@ -275,7 +247,7 @@ impl LeftSolidEdge {
                         vertex_movement.project_on(edge_direction),
                     ),
                 },
-                collision: Ok(Collision::SlideAlongEdge(*self, vertex, vertex_movement)),
+                collision: Ok(Collision::SlideAlongEdge),
                 what_moved: WhatMoved::Vertex,
             };
         }
@@ -283,7 +255,7 @@ impl LeftSolidEdge {
         if movement_multiplier < -EPSILON || movement_multiplier > 1. + EPSILON {
             return CollisionMovement::from_movement_vector(
                 vertex_movement,
-                NoCollision::OutsideMovement(*self, vertex, vertex_movement),
+                NoCollision::OutsideMovement,
             );
         }
 

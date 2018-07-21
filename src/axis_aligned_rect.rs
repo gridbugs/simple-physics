@@ -2,7 +2,7 @@ use aabb::Aabb;
 use cgmath::{Vector2, vec2};
 use collide::Collide;
 use line_segment::LineSegment;
-use vertex_edge_collision::EPSILON;
+use left_solid_edge::EPSILON;
 use left_solid_edge::LeftSolidEdge;
 
 #[derive(Debug, Clone)]
@@ -64,11 +64,6 @@ impl Collide for AxisAlignedRect {
     where
         F: FnMut(Vector2<f64>),
     {
-        f(self.top_left());
-        f(self.top_right());
-        f(self.bottom_left());
-        f(self.bottom_right());
-        /*
         if direction.y > -EPSILON {
             f(self.bottom_left());
             f(self.bottom_right());
@@ -88,7 +83,7 @@ impl Collide for AxisAlignedRect {
             if direction.x < EPSILON {
                 f(self.bottom_left());
             }
-        }*/
+        }
     }
     fn for_each_edge_facing<F>(&self, direction: Vector2<f64>, mut f: F)
     where
@@ -112,11 +107,6 @@ impl Collide for AxisAlignedRect {
         direction: Vector2<f64>,
         mut f: F,
     ) {
-        f(self.bottom_());
-        f(self.top_());
-        f(self.left_());
-        f(self.right_());
-        /*
         if direction.y > -EPSILON {
             f(self.bottom_())
         }
@@ -128,6 +118,6 @@ impl Collide for AxisAlignedRect {
         }
         if direction.x < EPSILON {
             f(self.left_())
-        } */
+        }
     }
 }

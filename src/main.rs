@@ -20,7 +20,6 @@ mod line_segment;
 mod loose_quad_tree;
 mod movement;
 mod shape;
-mod vertex_edge_collision;
 
 use cgmath::vec2;
 use game::{GameState, GameStateChanges, InputModel};

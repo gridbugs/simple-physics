@@ -1,7 +1,7 @@
 use aabb::Aabb;
 use cgmath::{InnerSpace, Vector2, vec2};
 use collide::Collide;
-use left_solid_edge::{LeftSolidEdge, vector2_cross_product, EPSILON};
+use left_solid_edge::LeftSolidEdge;
 
 #[derive(Debug, Clone, Copy)]
 pub enum SolidSide {
@@ -81,7 +81,7 @@ impl Collide for LineSegment {
 
     fn for_each_left_solid_edge_facing<F: FnMut(LeftSolidEdge)>(
         &self,
-        direction: Vector2<f64>,
+        _direction: Vector2<f64>,
         mut f: F,
     ) {
         let vector = self.vector();

@@ -4,7 +4,6 @@ use cgmath::Vector2;
 use collide::Collide;
 use left_solid_edge::MovementWithSlide;
 use line_segment::LineSegment;
-use vertex_edge_collision::CollisionInfo;
 
 #[derive(Debug, Clone)]
 pub enum Shape {
