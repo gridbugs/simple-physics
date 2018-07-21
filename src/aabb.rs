@@ -2,8 +2,8 @@ use cgmath::{Vector2, vec2};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Aabb {
-    top_left: Vector2<f32>,
-    size: Vector2<f32>,
+    top_left: Vector2<f64>,
+    size: Vector2<f64>,
 }
 
 pub struct AabbSplitFour {
@@ -14,18 +14,18 @@ pub struct AabbSplitFour {
 }
 
 impl Aabb {
-    pub fn new(top_left: Vector2<f32>, size: Vector2<f32>) -> Self {
+    pub fn new(top_left: Vector2<f64>, size: Vector2<f64>) -> Self {
         Self { top_left, size }
     }
     pub fn from_centre_and_half_size(
-        centre: Vector2<f32>,
-        half_size: Vector2<f32>,
+        centre: Vector2<f64>,
+        half_size: Vector2<f64>,
     ) -> Self {
         let top_left = centre - half_size;
         let size = half_size * 2.;
         Self::new(top_left, size)
     }
-    fn bottom_right_coord(&self) -> Vector2<f32> {
+    fn bottom_right_coord(&self) -> Vector2<f64> {
         self.top_left + self.size
     }
     pub fn from_union(a: &Aabb, b: &Aabb) -> Self {
@@ -45,7 +45,7 @@ impl Aabb {
     pub fn union(&self, other: &Self) -> Self {
         Self::from_union(self, other)
     }
-    pub fn size(&self) -> Vector2<f32> {
+    pub fn size(&self) -> Vector2<f64> {
         self.size
     }
     pub fn is_intersecting(&self, other: &Aabb) -> bool {
@@ -54,7 +54,7 @@ impl Aabb {
             && self.top_left.y + self.size.y >= other.top_left.y
             && other.top_left.y + other.size.y >= self.top_left.y
     }
-    pub fn centre(&self) -> Vector2<f32> {
+    pub fn centre(&self) -> Vector2<f64> {
         self.top_left + self.size / 2.
     }
     pub fn split_four(&self) -> AabbSplitFour {

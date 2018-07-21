@@ -7,15 +7,15 @@ use loose_quad_tree::LooseQuadTree;
 use movement::{self, EntityId, ForEachShapePosition, ShapePosition};
 use shape::Shape;
 
-fn clamp(value: f32, min: f32, max: f32) -> f32 {
+fn clamp(value: f64, min: f64, max: f64) -> f64 {
     value.max(min).min(max)
 }
 
 pub struct InputModel {
-    left: f32,
-    right: f32,
-    up: f32,
-    down: f32,
+    left: f64,
+    right: f64,
+    up: f64,
+    down: f64,
 }
 
 impl Default for InputModel {
@@ -30,25 +30,25 @@ impl Default for InputModel {
 }
 
 impl InputModel {
-    pub fn set_left(&mut self, value: f32) {
+    pub fn set_left(&mut self, value: f64) {
         self.left = clamp(value, 0., 1.);
     }
-    pub fn set_right(&mut self, value: f32) {
+    pub fn set_right(&mut self, value: f64) {
         self.right = clamp(value, 0., 1.);
     }
-    pub fn set_up(&mut self, value: f32) {
+    pub fn set_up(&mut self, value: f64) {
         self.up = clamp(value, 0., 1.);
     }
-    pub fn set_down(&mut self, value: f32) {
+    pub fn set_down(&mut self, value: f64) {
         self.down = clamp(value, 0., 1.);
     }
-    fn horizontal(&self) -> f32 {
+    fn horizontal(&self) -> f64 {
         self.right - self.left
     }
-    fn vertical(&self) -> f32 {
+    fn vertical(&self) -> f64 {
         self.down - self.up
     }
-    fn movement(&self) -> Vector2<f32> {
+    fn movement(&self) -> Vector2<f64> {
         let raw = vec2(self.horizontal(), self.vertical());
         if raw.magnitude2() > 1. {
             raw.normalize()
@@ -59,16 +59,16 @@ impl InputModel {
 }
 
 pub struct RenderUpdate<'a> {
-    pub position: Vector2<f32>,
+    pub position: Vector2<f64>,
     pub shape: &'a Shape,
     pub colour: [f32; 3],
 }
 
 fn update_player_velocity(
-    current_velocity: Vector2<f32>,
+    current_velocity: Vector2<f64>,
     input_model: &InputModel,
-) -> Vector2<f32> {
-    const MULTIPLIER: Vector2<f32> = Vector2 { x: 0.1, y: 0.5 };
+) -> Vector2<f64> {
+    const MULTIPLIER: Vector2<f64> = Vector2 { x: 0.1, y: 0.5 };
     current_velocity + input_model.movement().mul_element_wise(MULTIPLIER) + vec2(0., 0.1)
 }
 
@@ -90,13 +90,13 @@ impl EntityIdAllocator {
 
 #[derive(Debug)]
 struct EntityCommon {
-    position: Vector2<f32>,
+    position: Vector2<f64>,
     shape: Shape,
     colour: [f32; 3],
 }
 
 impl EntityCommon {
-    fn new(position: Vector2<f32>, shape: Shape, colour: [f32; 3]) -> Self {
+    fn new(position: Vector2<f64>, shape: Shape, colour: [f32; 3]) -> Self {
         Self {
             position,
             shape,
@@ -110,15 +110,15 @@ impl EntityCommon {
 
 #[derive(Default)]
 pub struct GameStateChanges {
-    position: Vec<(EntityId, Vector2<f32>)>,
-    velocity: Vec<(EntityId, Vector2<f32>)>,
+    position: Vec<(EntityId, Vector2<f64>)>,
+    velocity: Vec<(EntityId, Vector2<f64>)>,
 }
 
 pub struct GameState {
     player_id: Option<EntityId>,
     entity_id_allocator: EntityIdAllocator,
     common: FnvHashMap<EntityId, EntityCommon>,
-    velocity: FnvHashMap<EntityId, Vector2<f32>>,
+    velocity: FnvHashMap<EntityId, Vector2<f64>>,
     quad_tree: LooseQuadTree<EntityId>,
 }
 
@@ -138,7 +138,7 @@ impl ForEachShapePosition for GameState {
 }
 
 impl GameState {
-    pub fn new(size_hint: Vector2<f32>) -> Self {
+    pub fn new(size_hint: Vector2<f64>) -> Self {
         Self {
             player_id: None,
             entity_id_allocator: Default::default(),

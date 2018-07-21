@@ -7,11 +7,11 @@ use vertex_edge_collision::{self, Collision, CollisionInfo, WhatIsMoving};
 
 fn for_each_single_direction_collision<A, B, F>(
     shape: &A,
-    position: Vector2<f32>,
+    position: Vector2<f64>,
     other_shape: &B,
-    other_position: Vector2<f32>,
-    movement: Vector2<f32>,
-    reverse_movement: Vector2<f32>,
+    other_position: Vector2<f64>,
+    movement: Vector2<f64>,
+    reverse_movement: Vector2<f64>,
     f: &mut F,
     what_is_moving: WhatIsMoving,
 ) where
@@ -39,24 +39,24 @@ fn for_each_single_direction_collision<A, B, F>(
 }
 
 pub trait Collide {
-    fn aabb(&self, top_left: Vector2<f32>) -> Aabb;
-    fn for_each_edge_facing<F: FnMut(LineSegment)>(&self, direction: Vector2<f32>, f: F);
-    fn for_each_vertex_facing<F: FnMut(Vector2<f32>)>(
+    fn aabb(&self, top_left: Vector2<f64>) -> Aabb;
+    fn for_each_edge_facing<F: FnMut(LineSegment)>(&self, direction: Vector2<f64>, f: F);
+    fn for_each_vertex_facing<F: FnMut(Vector2<f64>)>(
         &self,
-        direction: Vector2<f32>,
+        direction: Vector2<f64>,
         f: F,
     );
     fn for_each_left_solid_edge_facing<F: FnMut(LeftSolidEdge)>(
         &self,
-        direction: Vector2<f32>,
+        direction: Vector2<f64>,
         f: F,
     );
     fn for_each_movement_collision<StationaryShape, F>(
         &self,
-        position: Vector2<f32>,
+        position: Vector2<f64>,
         stationary_shape: &StationaryShape,
-        stationary_position: Vector2<f32>,
-        movement: Vector2<f32>,
+        stationary_position: Vector2<f64>,
+        movement: Vector2<f64>,
         mut f: F,
     ) where
         Self: Sized,
@@ -87,10 +87,10 @@ pub trait Collide {
     }
     fn movement_collision_test<StationaryShape>(
         &self,
-        position: Vector2<f32>,
+        position: Vector2<f64>,
         stationary_shape: &StationaryShape,
-        stationary_position: Vector2<f32>,
-        movement: Vector2<f32>,
+        stationary_position: Vector2<f64>,
+        movement: Vector2<f64>,
     ) -> Option<CollisionInfo>
     where
         Self: Sized,
@@ -117,10 +117,10 @@ pub trait Collide {
 
     fn for_each_movement_collision_<StationaryShape, F>(
         &self,
-        position: Vector2<f32>,
+        position: Vector2<f64>,
         stationary_shape: &StationaryShape,
-        stationary_position: Vector2<f32>,
-        movement: Vector2<f32>,
+        stationary_position: Vector2<f64>,
+        movement: Vector2<f64>,
         mut f: F,
     ) where
         Self: Sized,
@@ -149,10 +149,10 @@ pub trait Collide {
     }
     fn movement_collision_test_<StationaryShape>(
         &self,
-        position: Vector2<f32>,
+        position: Vector2<f64>,
         stationary_shape: &StationaryShape,
-        stationary_position: Vector2<f32>,
-        movement: Vector2<f32>,
+        stationary_position: Vector2<f64>,
+        movement: Vector2<f64>,
     ) -> MovementWithSlide
     where
         Self: Sized,

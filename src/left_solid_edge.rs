@@ -1,18 +1,18 @@
 use cgmath::{InnerSpace, Vector2, vec2};
 use std::cmp::Ordering;
 
-pub const EPSILON: f32 = 0.01;
+pub const EPSILON: f64 = 0.00001;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LeftSolidEdge {
-    pub start: Vector2<f32>,
-    pub end: Vector2<f32>,
+    pub start: Vector2<f64>,
+    pub end: Vector2<f64>,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct Vector2WithMagnitude2 {
-    vector: Vector2<f32>,
-    magnitude2: f32,
+    vector: Vector2<f64>,
+    magnitude2: f64,
 }
 
 impl Vector2WithMagnitude2 {
@@ -22,7 +22,7 @@ impl Vector2WithMagnitude2 {
             magnitude2: 0.,
         }
     }
-    fn from_vector(vector: Vector2<f32>) -> Self {
+    fn from_vector(vector: Vector2<f64>) -> Self {
         Self {
             vector,
             magnitude2: vector.magnitude2(),
@@ -34,28 +34,28 @@ impl Vector2WithMagnitude2 {
             magnitude2: self.magnitude2,
         }
     }
-    pub fn vector(&self) -> Vector2<f32> {
+    pub fn vector(&self) -> Vector2<f64> {
         self.vector
     }
-    pub fn magnitude2(&self) -> f32 {
+    pub fn magnitude2(&self) -> f64 {
         self.magnitude2
     }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum NoCollision {
-    ImpossibleDirection(LeftSolidEdge, Vector2<f32>, Vector2<f32>),
+    ImpossibleDirection(LeftSolidEdge, Vector2<f64>, Vector2<f64>),
     ParallelNonColinear,
     ColinearNonOverlapping,
-    OutsideMovement(LeftSolidEdge, Vector2<f32>, Vector2<f32>),
-    InsideMovementOutsideEdge(f32),
+    OutsideMovement(LeftSolidEdge, Vector2<f64>, Vector2<f64>),
+    InsideMovementOutsideEdge(f64),
     NothingToCollideWith,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Collision {
     ColinearCourseAdjustment,
-    SlideAlongEdge(LeftSolidEdge, Vector2<f32>, Vector2<f32>),
+    SlideAlongEdge(LeftSolidEdge, Vector2<f64>, Vector2<f64>),
     MoveUntilEdgeThenSlide,
 }
 
@@ -71,7 +71,7 @@ pub struct MovementWithSlide {
     pub slide: Vector2WithMagnitude2,
 }
 impl MovementWithSlide {
-    pub fn new_just_movement(movement: Vector2<f32>) -> Self {
+    pub fn new_just_movement(movement: Vector2<f64>) -> Self {
         Self {
             movement: Vector2WithMagnitude2::from_vector(movement),
             slide: Vector2WithMagnitude2::zero(),
@@ -136,7 +136,7 @@ impl PartialOrd for CollisionMovement {
 }
 
 impl CollisionMovement {
-    fn from_movement_vector(movement: Vector2<f32>, no_collision: NoCollision) -> Self {
+    fn from_movement_vector(movement: Vector2<f64>, no_collision: NoCollision) -> Self {
         let movement = MovementWithSlide {
             movement: Vector2WithMagnitude2::from_vector(movement),
             slide: Vector2WithMagnitude2::zero(),
@@ -156,29 +156,29 @@ impl CollisionMovement {
     }
 }
 
-pub fn vector2_cross_product(v: Vector2<f32>, w: Vector2<f32>) -> f32 {
+pub fn vector2_cross_product(v: Vector2<f64>, w: Vector2<f64>) -> f64 {
     v.x * w.y - v.y * w.x
 }
 
 impl LeftSolidEdge {
-    pub fn new(start: Vector2<f32>, end: Vector2<f32>) -> Self {
+    pub fn new(start: Vector2<f64>, end: Vector2<f64>) -> Self {
         Self { start, end }
     }
-    pub fn add_vector(&self, vector: Vector2<f32>) -> Self {
+    pub fn add_vector(&self, vector: Vector2<f64>) -> Self {
         Self {
             start: self.start + vector,
             end: self.end + vector,
         }
     }
 
-    fn vector(&self) -> Vector2<f32> {
+    fn vector(&self) -> Vector2<f64> {
         self.end - self.start
     }
 
     pub fn vertex_collision_edge_is_moving(
         &self,
-        vertex: Vector2<f32>,
-        edge_movement: Vector2<f32>,
+        vertex: Vector2<f64>,
+        edge_movement: Vector2<f64>,
     ) -> CollisionMovement {
         self.vertex_collision_vertex_is_moving(vertex, -edge_movement)
             .reverse()
@@ -186,8 +186,8 @@ impl LeftSolidEdge {
 
     pub fn vertex_collision_vertex_is_moving(
         &self,
-        vertex: Vector2<f32>,
-        vertex_movement: Vector2<f32>,
+        vertex: Vector2<f64>,
+        vertex_movement: Vector2<f64>,
     ) -> CollisionMovement {
         let edge_vector = self.vector();
         let cross = vector2_cross_product(vertex_movement, edge_vector);
@@ -253,7 +253,7 @@ impl LeftSolidEdge {
 
         let edge_vertex_multiplier =
             vector2_cross_product(vertex_to_start, vertex_movement) / cross;
-        if edge_vertex_multiplier < -EPSILON || edge_vertex_multiplier > 1. + EPSILON {
+        if edge_vertex_multiplier < EPSILON || edge_vertex_multiplier > 1. - EPSILON {
             return CollisionMovement::from_movement_vector(
                 vertex_movement,
                 NoCollision::InsideMovementOutsideEdge(edge_vertex_multiplier),
@@ -308,12 +308,12 @@ mod test {
     use super::*;
     use cgmath::vec2;
 
-    fn edge(s: Vector2<f32>, e: Vector2<f32>) -> LeftSolidEdge {
+    fn edge(s: Vector2<f64>, e: Vector2<f64>) -> LeftSolidEdge {
         LeftSolidEdge::new(s, e)
     }
 
-    const M: f32 = 100.;
-    fn mul(x: f32) -> f32 {
+    const M: f64 = 100.;
+    fn mul(x: f64) -> f64 {
         (x * M).floor()
     }
 

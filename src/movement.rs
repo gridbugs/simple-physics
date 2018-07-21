@@ -10,7 +10,7 @@ pub type EntityId = u32;
 #[derive(Debug)]
 pub struct ShapePosition<'a> {
     pub entity_id: EntityId,
-    pub position: Vector2<f32>,
+    pub position: Vector2<f64>,
     pub shape: &'a Shape,
 }
 
@@ -18,7 +18,7 @@ impl<'a> ShapePosition<'a> {
     fn aabb(&self) -> Aabb {
         self.shape.aabb(self.position)
     }
-    fn movement_aabb(&self, movement: Vector2<f32>) -> Aabb {
+    fn movement_aabb(&self, movement: Vector2<f64>) -> Aabb {
         let current_aabb = self.aabb();
         let moved_aabb = self.shape.aabb(self.position + movement);
         current_aabb.union(&moved_aabb)
@@ -26,7 +26,7 @@ impl<'a> ShapePosition<'a> {
     fn movement_collision_test(
         &self,
         other: ShapePosition,
-        movement: Vector2<f32>,
+        movement: Vector2<f64>,
     ) -> MovementWithSlide {
         self.shape.movement_collision_test(
             self.position,
@@ -43,7 +43,7 @@ pub trait ForEachShapePosition {
 
 fn allowed_movement_step<F>(
     shape_position: ShapePosition,
-    movement: Vector2<f32>,
+    movement: Vector2<f64>,
     for_each_shape_position: &F,
 ) -> MovementWithSlide
 where
@@ -67,9 +67,9 @@ where
 
 pub fn position_after_allowde_movement<F>(
     shape_position: ShapePosition,
-    mut movement: Vector2<f32>,
+    mut movement: Vector2<f64>,
     for_each_shape_position: &F,
-) -> Vector2<f32>
+) -> Vector2<f64>
 where
     F: ForEachShapePosition,
 {

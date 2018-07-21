@@ -6,7 +6,7 @@ use std::num::NonZeroUsize;
 pub struct LooseQuadTree<T> {
     seq: u64,
     nodes: Vec<Node<T>>,
-    size: Vector2<f32>,
+    size: Vector2<f64>,
     next_free: usize,
 }
 
@@ -41,7 +41,7 @@ impl<T> LooseQuadTree<T> {
     const BOTTOM_RIGHT: usize = 3;
     const NUM_CHILDREN: usize = 4;
 
-    pub fn new(size: Vector2<f32>) -> Self {
+    pub fn new(size: Vector2<f64>) -> Self {
         Self {
             seq: 1,
             nodes: vec![Default::default()],

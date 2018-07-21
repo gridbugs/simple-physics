@@ -7,23 +7,23 @@ use left_solid_edge::LeftSolidEdge;
 
 #[derive(Debug, Clone)]
 pub struct AxisAlignedRect {
-    dimensions: Vector2<f32>,
+    dimensions: Vector2<f64>,
 }
 
 impl AxisAlignedRect {
-    pub fn new(dimensions: Vector2<f32>) -> Self {
+    pub fn new(dimensions: Vector2<f64>) -> Self {
         Self { dimensions }
     }
-    fn top_left(&self) -> Vector2<f32> {
+    fn top_left(&self) -> Vector2<f64> {
         vec2(0., 0.)
     }
-    fn top_right(&self) -> Vector2<f32> {
+    fn top_right(&self) -> Vector2<f64> {
         vec2(self.dimensions.x, 0.)
     }
-    fn bottom_left(&self) -> Vector2<f32> {
+    fn bottom_left(&self) -> Vector2<f64> {
         vec2(0., self.dimensions.y)
     }
-    fn bottom_right(&self) -> Vector2<f32> {
+    fn bottom_right(&self) -> Vector2<f64> {
         self.dimensions
     }
     fn top(&self) -> LineSegment {
@@ -51,18 +51,18 @@ impl AxisAlignedRect {
         LeftSolidEdge::new(self.bottom_left(), self.top_left())
     }
 
-    pub fn dimensions(&self) -> Vector2<f32> {
+    pub fn dimensions(&self) -> Vector2<f64> {
         self.dimensions
     }
 }
 
 impl Collide for AxisAlignedRect {
-    fn aabb(&self, top_left: Vector2<f32>) -> Aabb {
+    fn aabb(&self, top_left: Vector2<f64>) -> Aabb {
         Aabb::new(top_left, self.dimensions)
     }
-    fn for_each_vertex_facing<F>(&self, direction: Vector2<f32>, mut f: F)
+    fn for_each_vertex_facing<F>(&self, direction: Vector2<f64>, mut f: F)
     where
-        F: FnMut(Vector2<f32>),
+        F: FnMut(Vector2<f64>),
     {
         f(self.top_left());
         f(self.top_right());
@@ -90,7 +90,7 @@ impl Collide for AxisAlignedRect {
             }
         }*/
     }
-    fn for_each_edge_facing<F>(&self, direction: Vector2<f32>, mut f: F)
+    fn for_each_edge_facing<F>(&self, direction: Vector2<f64>, mut f: F)
     where
         F: FnMut(LineSegment),
     {
@@ -109,7 +109,7 @@ impl Collide for AxisAlignedRect {
     }
     fn for_each_left_solid_edge_facing<F: FnMut(LeftSolidEdge)>(
         &self,
-        direction: Vector2<f32>,
+        direction: Vector2<f64>,
         mut f: F,
     ) {
         f(self.bottom_());

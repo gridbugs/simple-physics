@@ -3,9 +3,9 @@ use line_segment::LineSegment;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CollisionInfo {
-    pub magnitude2: f32,
-    pub allowed_movement: Vector2<f32>,
-    pub slide_movement: Option<Vector2<f32>>,
+    pub magnitude2: f64,
+    pub allowed_movement: Vector2<f64>,
+    pub slide_movement: Option<Vector2<f64>>,
 }
 
 impl CollisionInfo {
@@ -33,14 +33,14 @@ pub enum NoCollision {
     ZeroLengthEdge,
 }
 
-fn vector2_cross_product(v: Vector2<f32>, w: Vector2<f32>) -> f32 {
+fn vector2_cross_product(v: Vector2<f64>, w: Vector2<f64>) -> f64 {
     v.x * w.y - v.y * w.x
 }
 
-pub const EPSILON: f32 = 0.01;
-const PADDING: f32 = 0.2;
+pub const EPSILON: f64 = 0.01;
+const PADDING: f64 = 0.2;
 
-fn apply_padding(allowed_movement: Vector2<f32>) -> Vector2<f32> {
+fn apply_padding(allowed_movement: Vector2<f64>) -> Vector2<f64> {
     if allowed_movement.magnitude() < PADDING {
         vec2(0., 0.)
     } else {
@@ -55,7 +55,7 @@ pub enum WhatIsMoving {
 }
 
 impl WhatIsMoving {
-    fn multiplier(self) -> f32 {
+    fn multiplier(self) -> f64 {
         match self {
             WhatIsMoving::VertexMovingTowardsEdge => 1.,
             WhatIsMoving::EdgeMovingTowardsVertex => -1.,
@@ -64,8 +64,8 @@ impl WhatIsMoving {
 }
 
 pub fn vertex_edge_collision(
-    vertex: Vector2<f32>,
-    movement: Vector2<f32>,
+    vertex: Vector2<f64>,
+    movement: Vector2<f64>,
     edge: LineSegment,
     what_is_moving: WhatIsMoving,
 ) -> Result<Collision, NoCollision> {
@@ -155,13 +155,13 @@ mod test {
     use super::*;
     use cgmath::vec2;
 
-    fn v(x: f32, y: f32) -> Vector2<f32> {
+    fn v(x: f64, y: f64) -> Vector2<f64> {
         vec2(x, y)
     }
-    fn ls(start: Vector2<f32>, end: Vector2<f32>) -> LineSegment {
+    fn ls(start: Vector2<f64>, end: Vector2<f64>) -> LineSegment {
         LineSegment::new_both_solid(start, end)
     }
-    fn unwrap_collision(collision: Collision) -> Vector2<f32> {
+    fn unwrap_collision(collision: Collision) -> Vector2<f64> {
         match collision {
             Collision::EdgeCollision(CollisionInfo {
                 allowed_movement, ..
@@ -170,15 +170,15 @@ mod test {
         }
     }
 
-    fn assert_veq(v: Vector2<f32>, w: Vector2<f32>) {
-        const MULT: f32 = 1000.;
+    fn assert_veq(v: Vector2<f64>, w: Vector2<f64>) {
+        const MULT: f64 = 1000.;
         assert_eq!((v.x * MULT).floor(), (w.x * MULT).floor());
         assert_eq!((v.y * MULT).floor(), (w.y * MULT).floor());
     }
 
     fn vertex_moving_towards_edge(
-        vertex: Vector2<f32>,
-        movement: Vector2<f32>,
+        vertex: Vector2<f64>,
+        movement: Vector2<f64>,
         edge: LineSegment,
     ) -> Result<Collision, NoCollision> {
         vertex_edge_collision(
@@ -190,8 +190,8 @@ mod test {
     }
 
     fn edge_moving_towards_vertex(
-        vertex: Vector2<f32>,
-        movement: Vector2<f32>,
+        vertex: Vector2<f64>,
+        movement: Vector2<f64>,
         edge: LineSegment,
     ) -> Result<Collision, NoCollision> {
         vertex_edge_collision(
