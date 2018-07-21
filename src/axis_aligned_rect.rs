@@ -3,6 +3,7 @@ use cgmath::{Vector2, vec2};
 use collide::Collide;
 use line_segment::LineSegment;
 use vertex_edge_collision::EPSILON;
+use left_solid_edge::LeftSolidEdge;
 
 #[derive(Debug, Clone)]
 pub struct AxisAlignedRect {
@@ -37,6 +38,19 @@ impl AxisAlignedRect {
     fn left(&self) -> LineSegment {
         LineSegment::new_left_solid(self.bottom_left(), self.top_left())
     }
+    fn top_(&self) -> LeftSolidEdge {
+        LeftSolidEdge::new(self.top_left(), self.top_right())
+    }
+    fn right_(&self) -> LeftSolidEdge {
+        LeftSolidEdge::new(self.top_right(), self.bottom_right())
+    }
+    fn bottom_(&self) -> LeftSolidEdge {
+        LeftSolidEdge::new(self.bottom_right(), self.bottom_left())
+    }
+    fn left_(&self) -> LeftSolidEdge {
+        LeftSolidEdge::new(self.bottom_left(), self.top_left())
+    }
+
     pub fn dimensions(&self) -> Vector2<f32> {
         self.dimensions
     }
@@ -86,6 +100,24 @@ impl Collide for AxisAlignedRect {
         }
         if direction.x < EPSILON {
             f(self.left())
+        }
+    }
+    fn for_each_left_solid_edge_facing<F: FnMut(LeftSolidEdge)>(
+        &self,
+        direction: Vector2<f32>,
+        mut f: F,
+    ) {
+        if direction.y > -EPSILON {
+            f(self.bottom_())
+        }
+        if direction.y < EPSILON {
+            f(self.top_())
+        }
+        if direction.x > -EPSILON {
+            f(self.right_())
+        }
+        if direction.x < EPSILON {
+            f(self.left_())
         }
     }
 }

@@ -82,7 +82,8 @@ pub fn vertex_edge_collision(
     if cross_abs < EPSILON {
         if vector2_cross_product(vertex_to_edge_start, movement).abs() < EPSILON {
             let mult_a_x_movement_len2 = vertex_to_edge_start.dot(movement);
-            let mult_b_x_movement_len2 = (vertex_to_edge_start + edge_vector).dot(movement);
+            let mult_b_x_movement_len2 =
+                (vertex_to_edge_start + edge_vector).dot(movement);
             let (mult_min_x_movement_len2, mult_max_x_movement_len2) =
                 if mult_a_x_movement_len2 < mult_b_x_movement_len2 {
                     (mult_a_x_movement_len2, mult_b_x_movement_len2)
@@ -112,7 +113,8 @@ pub fn vertex_edge_collision(
         }
     } else {
         let cross_sign = cross.signum();
-        let vertex_multiplier_x_cross = vector2_cross_product(vertex_to_edge_start, edge_vector);
+        let vertex_multiplier_x_cross =
+            vector2_cross_product(vertex_to_edge_start, edge_vector);
         let vertex_multiplier_x_cross_abs = vertex_multiplier_x_cross * cross_sign;
         if vertex_multiplier_x_cross_abs < EPSILON {
             if vertex_multiplier_x_cross_abs > -EPSILON {
@@ -123,7 +125,8 @@ pub fn vertex_edge_collision(
         if vertex_multiplier_x_cross_abs > cross_abs + EPSILON {
             return Err(NoCollision::NonParallelNonIntersecting);
         }
-        let edge_multiplier_x_cross = vector2_cross_product(vertex_to_edge_start, movement);
+        let edge_multiplier_x_cross =
+            vector2_cross_product(vertex_to_edge_start, movement);
         let edge_multiplier_x_cross_abs = edge_multiplier_x_cross * cross_sign;
         if edge_multiplier_x_cross_abs < -EPSILON {
             return Err(NoCollision::NonParallelNonIntersecting);
@@ -156,7 +159,7 @@ mod test {
         vec2(x, y)
     }
     fn ls(start: Vector2<f32>, end: Vector2<f32>) -> LineSegment {
-        LineSegment::new(start, end)
+        LineSegment::new_both_solid(start, end)
     }
     fn unwrap_collision(collision: Collision) -> Vector2<f32> {
         match collision {
@@ -204,8 +207,11 @@ mod test {
         {
             assert_veq(
                 unwrap_collision(
-                    vertex_moving_towards_edge(v(0., 0.), v(3., 3.), ls(v(0., 4.), v(4., 0.)))
-                        .unwrap(),
+                    vertex_moving_towards_edge(
+                        v(0., 0.),
+                        v(3., 3.),
+                        ls(v(0., 4.), v(4., 0.)),
+                    ).unwrap(),
                 ),
                 v(2., 2.) + v(-1., -1.).normalize_to(PADDING),
             );
@@ -236,7 +242,11 @@ mod test {
         );
         assert_veq(
             unwrap_collision(
-                vertex_moving_towards_edge(v(0., 0.), v(2., 1.), ls(v(2., 1.), v(8., 4.))).unwrap(),
+                vertex_moving_towards_edge(
+                    v(0., 0.),
+                    v(2., 1.),
+                    ls(v(2., 1.), v(8., 4.)),
+                ).unwrap(),
             ),
             v(2., 1.) - v(2., 1.).normalize_to(PADDING),
         );

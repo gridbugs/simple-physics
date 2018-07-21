@@ -2,6 +2,7 @@ use aabb::Aabb;
 use best::BestMap;
 use cgmath::Vector2;
 use line_segment::LineSegment;
+use left_solid_edge::LeftSolidEdge;
 use vertex_edge_collision::{self, Collision, CollisionInfo, WhatIsMoving};
 
 fn for_each_single_direction_collision<A, B, F>(
@@ -40,7 +41,16 @@ fn for_each_single_direction_collision<A, B, F>(
 pub trait Collide {
     fn aabb(&self, top_left: Vector2<f32>) -> Aabb;
     fn for_each_edge_facing<F: FnMut(LineSegment)>(&self, direction: Vector2<f32>, f: F);
-    fn for_each_vertex_facing<F: FnMut(Vector2<f32>)>(&self, direction: Vector2<f32>, f: F);
+    fn for_each_vertex_facing<F: FnMut(Vector2<f32>)>(
+        &self,
+        direction: Vector2<f32>,
+        f: F,
+    );
+    fn for_each_left_solid_edge_facing<F: FnMut(LeftSolidEdge)>(
+        &self,
+        direction: Vector2<f32>,
+        f: F,
+    );
     fn for_each_movement_collision<StationaryShape, F>(
         &self,
         position: Vector2<f32>,
@@ -94,7 +104,9 @@ pub trait Collide {
             movement,
             |collision| match collision {
                 Collision::StartInsideEdge => (),
-                Collision::NoMovement => shortest_movement.insert_le(0., CollisionInfo::zero()),
+                Collision::NoMovement => {
+                    shortest_movement.insert_le(0., CollisionInfo::zero())
+                }
                 Collision::EdgeCollision(info) => {
                     shortest_movement.insert_le(info.magnitude2, info);
                 }

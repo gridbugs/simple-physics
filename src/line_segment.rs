@@ -1,6 +1,7 @@
 use aabb::Aabb;
 use cgmath::{Vector2, vec2};
 use collide::Collide;
+use left_solid_edge::LeftSolidEdge;
 
 #[derive(Debug, Clone, Copy)]
 pub enum SolidSide {
@@ -54,11 +55,26 @@ impl Collide for LineSegment {
         let bottom_right = vec2(x_max, y_max);
         Aabb::new(top_left, bottom_right - top_left)
     }
-    fn for_each_edge_facing<F: FnMut(LineSegment)>(&self, _direction: Vector2<f32>, mut f: F) {
+    fn for_each_edge_facing<F: FnMut(LineSegment)>(
+        &self,
+        _direction: Vector2<f32>,
+        mut f: F,
+    ) {
         f(*self);
     }
-    fn for_each_vertex_facing<F: FnMut(Vector2<f32>)>(&self, _direction: Vector2<f32>, mut f: F) {
+    fn for_each_vertex_facing<F: FnMut(Vector2<f32>)>(
+        &self,
+        _direction: Vector2<f32>,
+        mut f: F,
+    ) {
         f(self.start);
         f(self.end);
+    }
+
+    fn for_each_left_solid_edge_facing<F: FnMut(LeftSolidEdge)>(
+        &self,
+        direction: Vector2<f32>,
+        f: F,
+    ) {
     }
 }
