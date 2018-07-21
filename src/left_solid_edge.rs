@@ -1,7 +1,7 @@
 use cgmath::{InnerSpace, Vector2, vec2};
 use std::cmp::Ordering;
 
-pub const EPSILON: f64 = 0.00001;
+pub const EPSILON: f64 = 0.000001;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LeftSolidEdge {
@@ -227,7 +227,7 @@ impl LeftSolidEdge {
 
         let edge_vertex_multiplier =
             vector2_cross_product(vertex_to_start, vertex_movement) / cross;
-        if edge_vertex_multiplier < EPSILON || edge_vertex_multiplier > 1. - EPSILON {
+        if edge_vertex_multiplier < -EPSILON || edge_vertex_multiplier > 1. + EPSILON {
             return CollisionMovement::from_movement_vector(
                 vertex_movement,
                 NoCollision::InsideMovementOutsideEdge,
