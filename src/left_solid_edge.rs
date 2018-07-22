@@ -228,7 +228,7 @@ impl LeftSolidEdge {
 
         let edge_vertex_multiplier =
             vector2_cross_product(vertex_to_start, vertex_movement) / cross;
-        if edge_vertex_multiplier < -EPSILON || edge_vertex_multiplier > 1. + EPSILON {
+        if edge_vertex_multiplier < EPSILON || edge_vertex_multiplier > 1. - EPSILON {
             return CollisionMovement::from_movement_vector(
                 vertex_movement,
                 NoCollision::OutsideEdge,
