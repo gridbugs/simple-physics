@@ -3,6 +3,7 @@ use std::cmp::Ordering;
 use best::BestSetNonEmpty;
 
 pub const EPSILON: f64 = 0.000001;
+pub const BIG_EPSILON: f64 = 0.1;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LeftSolidEdge {
@@ -315,6 +316,7 @@ impl LeftSolidEdge {
             );
         }
 
+        let movement_multiplier = (movement_multiplier - BIG_EPSILON).max(0.);
         let movement = vertex_movement * movement_multiplier;
 
         let remaining_movement = vertex_movement * (1. - movement_multiplier).max(0.);
