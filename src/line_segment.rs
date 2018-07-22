@@ -4,38 +4,22 @@ use collide::Collide;
 use left_solid_edge::LeftSolidEdge;
 
 #[derive(Debug, Clone, Copy)]
-pub enum SolidSide {
-    Left,
-    Both,
-}
-
-#[derive(Debug, Clone, Copy)]
 pub struct LineSegment {
     pub start: Vector2<f64>,
     pub end: Vector2<f64>,
-    pub solid_side: SolidSide,
 }
 
 impl LineSegment {
     pub fn new_both_solid(start: Vector2<f64>, end: Vector2<f64>) -> Self {
-        Self {
-            start,
-            end,
-            solid_side: SolidSide::Both,
-        }
+        Self { start, end }
     }
     pub fn new_left_solid(start: Vector2<f64>, end: Vector2<f64>) -> Self {
-        Self {
-            start,
-            end,
-            solid_side: SolidSide::Left,
-        }
+        Self { start, end }
     }
     pub fn add_vector(&self, vector: Vector2<f64>) -> Self {
         Self {
             start: self.start + vector,
             end: self.end + vector,
-            solid_side: self.solid_side,
         }
     }
     pub fn vector(&self) -> Vector2<f64> {
