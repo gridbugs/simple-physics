@@ -13,9 +13,6 @@ impl LineSegment {
     pub fn new_both_solid(start: Vector2<f64>, end: Vector2<f64>) -> Self {
         Self { start, end }
     }
-    pub fn new_left_solid(start: Vector2<f64>, end: Vector2<f64>) -> Self {
-        Self { start, end }
-    }
     pub fn add_vector(&self, vector: Vector2<f64>) -> Self {
         Self {
             start: self.start + vector,
@@ -47,23 +44,6 @@ impl Collide for LineSegment {
         let top_left = vec2(x_min, y_min);
         let bottom_right = vec2(x_max, y_max);
         Aabb::new(top_left, bottom_right - top_left)
-    }
-    fn for_each_edge_facing<F: FnMut(LineSegment)>(
-        &self,
-        _direction: Vector2<f64>,
-        mut f: F,
-    ) {
-        f(*self);
-    }
-    fn for_each_vertex_facing<F: FnMut(Vector2<f64>)>(
-        &self,
-        direction: Vector2<f64>,
-        mut f: F,
-    ) {
-        self.for_each_left_solid_edge_facing(direction, |edge| {
-            f(edge.start);
-            f(edge.end);
-        });
     }
 
     fn for_each_left_solid_edge_facing<F: FnMut(LeftSolidEdge)>(

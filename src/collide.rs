@@ -2,16 +2,9 @@ use aabb::Aabb;
 use best::BestSet;
 use cgmath::Vector2;
 use left_solid_edge::{CollisionMovement, LeftSolidEdge, MovementWithSlide};
-use line_segment::LineSegment;
 
 pub trait Collide {
     fn aabb(&self, top_left: Vector2<f64>) -> Aabb;
-    fn for_each_edge_facing<F: FnMut(LineSegment)>(&self, direction: Vector2<f64>, f: F);
-    fn for_each_vertex_facing<F: FnMut(Vector2<f64>)>(
-        &self,
-        direction: Vector2<f64>,
-        f: F,
-    );
     fn for_each_left_solid_edge_facing<F: FnMut(LeftSolidEdge)>(
         &self,
         direction: Vector2<f64>,
@@ -30,21 +23,12 @@ pub trait Collide {
         StationaryShape: Collide + ::std::fmt::Debug,
         F: FnMut(CollisionMovement),
     {
-        self.for_each_vertex_facing(movement, |rel_vertex| {
-            let abs_vertex = rel_vertex + position;
-            stationary_shape.for_each_left_solid_edge_facing(-movement, |rel_edge| {
-                let abs_edge = rel_edge.add_vector(stationary_position);
-                let collision_movement =
-                    abs_edge.vertex_collision_vertex_is_moving(abs_vertex, movement);
-                f(collision_movement);
-            });
-        });
         self.for_each_left_solid_edge_facing(movement, |rel_edge| {
-            let abs_edge = rel_edge.add_vector(position);
-            stationary_shape.for_each_vertex_facing(-movement, |rel_vertex| {
-                let abs_vertex = rel_vertex + stationary_position;
+            let moving_edge = rel_edge.add_vector(position);
+            stationary_shape.for_each_left_solid_edge_facing(-movement, |rel_edge| {
+                let stationary_edge = rel_edge.add_vector(stationary_position);
                 let collision_movement =
-                    abs_edge.vertex_collision_edge_is_moving(abs_vertex, movement);
+                    moving_edge.collide_with_stationary_edge(&stationary_edge, movement);
                 f(collision_movement);
             });
         });

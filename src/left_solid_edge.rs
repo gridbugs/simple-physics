@@ -1,5 +1,6 @@
 use cgmath::{InnerSpace, Vector2, vec2};
 use std::cmp::Ordering;
+use best::BestSetNonEmpty;
 
 pub const EPSILON: f64 = 0.000001;
 
@@ -154,7 +155,23 @@ impl LeftSolidEdge {
         self.end - self.start
     }
 
-    pub fn vertex_collision_edge_is_moving(
+    pub fn collide_with_stationary_edge(
+        &self,
+        other: &Self,
+        movement: Vector2<f64>,
+    ) -> CollisionMovement {
+        let a = self.vertex_collision_edge_is_moving(other.start, movement);
+        let b = self.vertex_collision_edge_is_moving(other.end, movement);
+        let c = other.vertex_collision_vertex_is_moving(self.start, movement);
+        let d = other.vertex_collision_vertex_is_moving(self.end, movement);
+        let mut closest = BestSetNonEmpty::new(a);
+        closest.insert_le(b);
+        closest.insert_le(c);
+        closest.insert_le(d);
+        closest.into_value()
+    }
+
+    fn vertex_collision_edge_is_moving(
         &self,
         vertex: Vector2<f64>,
         edge_movement: Vector2<f64>,
@@ -163,7 +180,7 @@ impl LeftSolidEdge {
             .reverse()
     }
 
-    pub fn vertex_collision_vertex_is_moving(
+    fn vertex_collision_vertex_is_moving(
         &self,
         vertex: Vector2<f64>,
         vertex_movement: Vector2<f64>,
