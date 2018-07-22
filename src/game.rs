@@ -168,12 +168,19 @@ impl GameState {
     pub fn init_demo(&mut self) {
         self.clear();
         let player_id = self.add_common(EntityCommon::new(
-            vec2(300., 0.),
+            vec2(700., 0.),
             Shape::AxisAlignedRect(AxisAlignedRect::new(vec2(32., 64.))),
             [1., 0., 0.],
         ));
         self.player_id = Some(player_id);
         self.velocity.insert(player_id, vec2(0., 0.));
+
+        self.add_static_solid(EntityCommon::new(
+            vec2(700., 200.),
+            Shape::AxisAlignedRect(AxisAlignedRect::new(vec2(32., 64.))),
+            [1., 1., 0.],
+        ));
+
         self.add_static_solid(EntityCommon::new(
             vec2(50., 200.),
             Shape::AxisAlignedRect(AxisAlignedRect::new(vec2(400., 20.))),
