@@ -140,6 +140,11 @@ pub fn vector2_cross_product(v: Vector2<f64>, w: Vector2<f64>) -> f64 {
     v.x * w.y - v.y * w.x
 }
 
+pub enum WhichEnd {
+    Start,
+    End,
+}
+
 impl LeftSolidEdge {
     pub fn new(start: Vector2<f64>, end: Vector2<f64>) -> Self {
         Self { start, end }
@@ -160,10 +165,35 @@ impl LeftSolidEdge {
         other: &Self,
         movement: Vector2<f64>,
     ) -> CollisionMovement {
-        let a = self.vertex_collision_edge_is_moving(other.start, movement);
-        let b = self.vertex_collision_edge_is_moving(other.end, movement);
-        let c = other.vertex_collision_vertex_is_moving(self.start, movement);
-        let d = other.vertex_collision_vertex_is_moving(self.end, movement);
+        let moving_edge_vector = self.vector();
+        let moving_edge_vector_cross_movement =
+            vector2_cross_product(moving_edge_vector, movement);
+        if moving_edge_vector_cross_movement > EPSILON {
+            return CollisionMovement::from_movement_vector(
+                movement,
+                NoCollision::ImpossibleDirection,
+            );
+        }
+        let stationary_edge_vector = other.vector();
+        let stationary_edge_vector_cross_movement =
+            vector2_cross_product(stationary_edge_vector, movement);
+        if stationary_edge_vector_cross_movement < -EPSILON {
+            return CollisionMovement::from_movement_vector(
+                movement,
+                NoCollision::ImpossibleDirection,
+            );
+        }
+        let a =
+            self.vertex_collision_edge_is_moving(other.start, movement, WhichEnd::Start);
+        let b = self.vertex_collision_edge_is_moving(other.end, movement, WhichEnd::End);
+        let c = other.vertex_collision_vertex_is_moving(
+            self.start,
+            movement,
+            WhichEnd::Start,
+        );
+        let d =
+            other.vertex_collision_vertex_is_moving(self.end, movement, WhichEnd::End);
+
         let mut closest = BestSetNonEmpty::new(a);
         closest.insert_le(b);
         closest.insert_le(c);
@@ -175,8 +205,9 @@ impl LeftSolidEdge {
         &self,
         vertex: Vector2<f64>,
         edge_movement: Vector2<f64>,
+        which_end: WhichEnd,
     ) -> CollisionMovement {
-        self.vertex_collision_vertex_is_moving(vertex, -edge_movement)
+        self.vertex_collision_vertex_is_moving(vertex, -edge_movement, which_end)
             .reverse()
     }
 
@@ -184,6 +215,7 @@ impl LeftSolidEdge {
         &self,
         vertex: Vector2<f64>,
         vertex_movement: Vector2<f64>,
+        which_end: WhichEnd,
     ) -> CollisionMovement {
         let edge_vector = self.vector();
         let cross = vector2_cross_product(vertex_movement, edge_vector);
@@ -245,7 +277,13 @@ impl LeftSolidEdge {
 
         let edge_vertex_multiplier =
             vector2_cross_product(vertex_to_start, vertex_movement) / cross;
-        if edge_vertex_multiplier < EPSILON || edge_vertex_multiplier > 1. - EPSILON {
+        let (min_multiplier, max_multiplier) = match which_end {
+            WhichEnd::Start => (EPSILON, 1. + EPSILON),
+            WhichEnd::End => (-EPSILON, 1. - EPSILON),
+        };
+        if edge_vertex_multiplier < min_multiplier
+            || edge_vertex_multiplier > max_multiplier
+        {
             return CollisionMovement::from_movement_vector(
                 vertex_movement,
                 NoCollision::OutsideEdge,
