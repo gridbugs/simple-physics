@@ -228,7 +228,7 @@ impl GameState {
         ));
         self.add_static_solid(EntityCommon::new(
             vec2(300., 470.),
-            Shape::LineSegment(LineSegment::new_both_solid(vec2(0., 0.), vec2(30., 30.))),
+            Shape::LineSegment(LineSegment::new_both_solid(vec2(0., 0.), vec2(32., 32.))),
             [0., 1., 0.],
         ));
     }
