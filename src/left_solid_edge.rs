@@ -3,7 +3,6 @@ use std::cmp::Ordering;
 use best::BestSetNonEmpty;
 
 pub const EPSILON: f64 = 0.000001;
-pub const BIG_EPSILON: f64 = 0.1;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LeftSolidEdge {
@@ -47,15 +46,13 @@ impl Vector2WithMagnitude2 {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum NoCollision {
     ImpossibleDirection,
-    ParallelNonColinear,
-    ColinearNonOverlapping,
+    Parallel,
     OutsideMovement,
     OutsideEdge,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Collision {
-    ColinearCourseAdjustment,
     SlideAlongEdge,
     MoveUntilEdgeThenSlide,
 }
@@ -230,50 +227,10 @@ impl LeftSolidEdge {
 
         let vertex_to_start = self.start - vertex;
         if cross > -EPSILON {
-            if vector2_cross_product(vertex_to_start, vertex_movement).abs() > EPSILON {
                 return CollisionMovement::from_movement_vector(
                     vertex_movement,
-                    NoCollision::ParallelNonColinear,
+                    NoCollision::Parallel,
                 );
-            }
-
-            let divisor = vertex_movement.dot(vertex_movement);
-            let movement_multiplier_a = vertex_to_start.dot(vertex_movement) / divisor;
-            let movement_multiplier_b =
-                (vertex_to_start + edge_vector).dot(vertex_movement) / divisor;
-
-            let (movement_multiplier_min, movement_multiplier_max) =
-                if movement_multiplier_a < movement_multiplier_b {
-                    (movement_multiplier_a, movement_multiplier_b)
-                } else {
-                    (movement_multiplier_b, movement_multiplier_a)
-                };
-
-            if movement_multiplier_max < -EPSILON
-                || movement_multiplier_min > 1. + EPSILON
-            {
-                return CollisionMovement::from_movement_vector(
-                    vertex_movement,
-                    NoCollision::ColinearNonOverlapping,
-                );
-            }
-
-            let edge_direction = edge_vector.normalize();
-            let corrected_movement = vertex_movement.project_on(edge_direction);
-            let corrected_vertex =
-                self.start - vertex_to_start.project_on(edge_direction);
-            let corrected_destination = corrected_vertex + corrected_movement;
-            let actual_movement = (corrected_destination - vertex)
-                .normalize_to(vertex_movement.magnitude() - EPSILON);
-            let movement = CollisionMovement {
-                movement: MovementWithSlide {
-                    movement: Vector2WithMagnitude2::from_vector(actual_movement),
-                    slide: Vector2WithMagnitude2::zero(),
-                },
-                collision: Ok(Collision::ColinearCourseAdjustment),
-                what_moved: WhatMoved::Vertex,
-            };
-            return movement;
         }
 
         let edge_vertex_multiplier =
@@ -316,7 +273,7 @@ impl LeftSolidEdge {
             );
         }
 
-        let movement_multiplier = (movement_multiplier - BIG_EPSILON).max(0.);
+        let movement_multiplier = (movement_multiplier).max(0.);
         let movement = vertex_movement * movement_multiplier;
 
         let remaining_movement = vertex_movement * (1. - movement_multiplier).max(0.);
@@ -347,12 +304,30 @@ mod test {
         (x * M).floor()
     }
 
+    impl LeftSolidEdge {
+        fn vertex_collision_edge_is_moving_test(
+            &self,
+            vertex: Vector2<f64>,
+            edge_movement: Vector2<f64>,
+        ) -> CollisionMovement {
+            self.vertex_collision_edge_is_moving(vertex, edge_movement, WhichEnd::Start)
+        }
+
+        fn vertex_collision_vertex_is_moving_test(
+            &self,
+            vertex: Vector2<f64>,
+            edge_movement: Vector2<f64>,
+        ) -> CollisionMovement {
+            self.vertex_collision_vertex_is_moving(vertex, edge_movement, WhichEnd::Start)
+        }
+    }
+
     #[test]
     fn basic_collision() {
         let e = edge(vec2(0., 0.), vec2(0., 10.));
         let v = vec2(5., 5.);
         let m = vec2(-10., 0.);
-        let c = e.vertex_collision_vertex_is_moving(v, m);
+        let c = e.vertex_collision_vertex_is_moving_test(v, m);
         let movement = c.movement.movement.vector();
         assert_eq!(mul(movement.x), mul(-5.));
         assert_eq!(mul(movement.y), mul(0.));
@@ -364,7 +339,7 @@ mod test {
         let v = vec2(-5., 5.);
         let m = vec2(10., 0.);
         assert_eq!(
-            e.vertex_collision_vertex_is_moving(v, m)
+            e.vertex_collision_vertex_is_moving_test(v, m)
                 .collision
                 .unwrap_err(),
             NoCollision::ImpossibleDirection
@@ -376,7 +351,7 @@ mod test {
         let e = edge(vec2(0., 0.), vec2(0., 10.));
         let v = vec2(5., 15.);
         let m = vec2(-10., 0.);
-        match e.vertex_collision_vertex_is_moving(v, m)
+        match e.vertex_collision_vertex_is_moving_test(v, m)
             .collision
             .unwrap_err()
         {
@@ -390,11 +365,11 @@ mod test {
         let e = edge(vec2(0., 0.), vec2(0., 10.));
         let v = vec2(1., 0.);
         let m = vec2(0., 1.);
-        match e.vertex_collision_vertex_is_moving(v, m)
+        match e.vertex_collision_vertex_is_moving_test(v, m)
             .collision
             .unwrap_err()
         {
-            NoCollision::ParallelNonColinear => (),
+            NoCollision::Parallel => (),
             _ => panic!(),
         }
     }
@@ -404,7 +379,7 @@ mod test {
         let e = edge(vec2(0., 0.), vec2(0., 10.));
         let v = vec2(0., 11.);
         let m = vec2(0., -4.);
-        let c = e.vertex_collision_vertex_is_moving(v, m);
+        let c = e.vertex_collision_vertex_is_moving_test(v, m);
         let movement = c.movement.movement.vector();
         assert_eq!(mul(movement.x), mul(0.));
         assert_eq!(mul(movement.y), mul(-4.));
@@ -415,7 +390,7 @@ mod test {
         let e = edge(vec2(0., 0.), vec2(0., 10.));
         let v = vec2(2., 0.);
         let m = vec2(-4., 4.);
-        let c = e.vertex_collision_vertex_is_moving(v, m);
+        let c = e.vertex_collision_vertex_is_moving_test(v, m);
         let movement = c.movement.movement.vector();
         let slide = c.movement.slide.vector();
         assert_eq!(mul(movement.x), mul(-2.));
@@ -429,7 +404,7 @@ mod test {
         let e = edge(vec2(0., 0.), vec2(0., 10.));
         let v = vec2(0., 5.);
         let m = vec2(-4., 4.);
-        let c = e.vertex_collision_vertex_is_moving(v, m);
+        let c = e.vertex_collision_vertex_is_moving_test(v, m);
         let movement = c.movement.movement.vector();
         let slide = c.movement.slide.vector();
         assert_eq!(mul(movement.x), mul(0.));
@@ -444,7 +419,7 @@ mod test {
         let v = vec2(0., 5.);
         let m = vec2(4., 4.);
         assert_eq!(
-            e.vertex_collision_vertex_is_moving(v, m)
+            e.vertex_collision_vertex_is_moving_test(v, m)
                 .collision
                 .unwrap_err(),
             NoCollision::ImpossibleDirection
@@ -456,7 +431,7 @@ mod test {
         let e = edge(vec2(0., 0.), vec2(0., 10.));
         let v = vec2(5., 5.);
         let m = vec2(10., 2.);
-        let c = e.vertex_collision_edge_is_moving(v, m);
+        let c = e.vertex_collision_edge_is_moving_test(v, m);
         let movement = c.movement.movement.vector();
         let slide = c.movement.slide.vector();
         assert_eq!(mul(movement.x), mul(5.));

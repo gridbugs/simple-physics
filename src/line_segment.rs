@@ -3,6 +3,8 @@ use cgmath::{InnerSpace, Vector2, vec2};
 use collide::Collide;
 use left_solid_edge::LeftSolidEdge;
 
+const WIDTH: f64 = 0.1;
+
 #[derive(Debug, Clone, Copy)]
 pub struct LineSegment {
     pub start: Vector2<f64>,
@@ -52,7 +54,7 @@ impl Collide for LineSegment {
         mut f: F,
     ) {
         let vector = self.vector();
-        let left = vec2(-vector.y, vector.x).normalize();
+        let left = vec2(-vector.y, vector.x).normalize_to(WIDTH);
         let a = self.add_vector(left).left_solid_edge_flipped();
         let b = self.add_vector(-left).left_solid_edge();
         f(a);
