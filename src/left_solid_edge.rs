@@ -46,14 +46,12 @@ impl Vector2WithMagnitude2 {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum NoCollision {
     ImpossibleDirection,
-    Parallel,
     OutsideMovement,
     OutsideEdge,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Collision {
-    SlideAlongEdge,
     MoveUntilEdgeThenSlide,
 }
 
@@ -166,7 +164,7 @@ impl LeftSolidEdge {
         let moving_edge_vector = self.vector();
         let moving_edge_vector_cross_movement =
             vector2_cross_product(moving_edge_vector, movement);
-        if moving_edge_vector_cross_movement > EPSILON {
+        if moving_edge_vector_cross_movement > -EPSILON {
             return CollisionMovement::from_movement_vector(
                 movement,
                 NoCollision::ImpossibleDirection,
@@ -175,7 +173,7 @@ impl LeftSolidEdge {
         let stationary_edge_vector = other.vector();
         let stationary_edge_vector_cross_movement =
             vector2_cross_product(stationary_edge_vector, movement);
-        if stationary_edge_vector_cross_movement < -EPSILON {
+        if stationary_edge_vector_cross_movement < EPSILON {
             return CollisionMovement::from_movement_vector(
                 movement,
                 NoCollision::ImpossibleDirection,
@@ -218,20 +216,7 @@ impl LeftSolidEdge {
         let edge_vector = self.vector();
         let cross = vector2_cross_product(vertex_movement, edge_vector);
 
-        if cross > EPSILON {
-            return CollisionMovement::from_movement_vector(
-                vertex_movement,
-                NoCollision::ImpossibleDirection,
-            );
-        }
-
         let vertex_to_start = self.start - vertex;
-        if cross > -EPSILON {
-                return CollisionMovement::from_movement_vector(
-                    vertex_movement,
-                    NoCollision::Parallel,
-                );
-        }
 
         let edge_vertex_multiplier =
             vector2_cross_product(vertex_to_start, vertex_movement) / cross;
@@ -252,19 +237,6 @@ impl LeftSolidEdge {
 
         let movement_multiplier =
             vector2_cross_product(vertex_to_start, edge_vector) / cross;
-
-        if movement_multiplier < EPSILON && movement_multiplier > -EPSILON {
-            return CollisionMovement {
-                movement: MovementWithSlide {
-                    movement: Vector2WithMagnitude2::zero(),
-                    slide: Vector2WithMagnitude2::from_vector(
-                        vertex_movement.project_on(edge_direction),
-                    ),
-                },
-                collision: Ok(Collision::SlideAlongEdge),
-                what_moved: WhatMoved::Vertex,
-            };
-        }
 
         if movement_multiplier < -EPSILON || movement_multiplier > 1. + EPSILON {
             return CollisionMovement::from_movement_vector(
@@ -287,156 +259,5 @@ impl LeftSolidEdge {
             collision: Ok(Collision::MoveUntilEdgeThenSlide),
             what_moved: WhatMoved::Vertex,
         }
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use cgmath::vec2;
-
-    fn edge(s: Vector2<f64>, e: Vector2<f64>) -> LeftSolidEdge {
-        LeftSolidEdge::new(s, e)
-    }
-
-    const M: f64 = 100.;
-    fn mul(x: f64) -> f64 {
-        (x * M).floor()
-    }
-
-    impl LeftSolidEdge {
-        fn vertex_collision_edge_is_moving_test(
-            &self,
-            vertex: Vector2<f64>,
-            edge_movement: Vector2<f64>,
-        ) -> CollisionMovement {
-            self.vertex_collision_edge_is_moving(vertex, edge_movement, WhichEnd::Start)
-        }
-
-        fn vertex_collision_vertex_is_moving_test(
-            &self,
-            vertex: Vector2<f64>,
-            edge_movement: Vector2<f64>,
-        ) -> CollisionMovement {
-            self.vertex_collision_vertex_is_moving(vertex, edge_movement, WhichEnd::Start)
-        }
-    }
-
-    #[test]
-    fn basic_collision() {
-        let e = edge(vec2(0., 0.), vec2(0., 10.));
-        let v = vec2(5., 5.);
-        let m = vec2(-10., 0.);
-        let c = e.vertex_collision_vertex_is_moving_test(v, m);
-        let movement = c.movement.movement.vector();
-        assert_eq!(mul(movement.x), mul(-5.));
-        assert_eq!(mul(movement.y), mul(0.));
-    }
-
-    #[test]
-    fn basic_collision_wrong_direction() {
-        let e = edge(vec2(0., 0.), vec2(0., 10.));
-        let v = vec2(-5., 5.);
-        let m = vec2(10., 0.);
-        assert_eq!(
-            e.vertex_collision_vertex_is_moving_test(v, m)
-                .collision
-                .unwrap_err(),
-            NoCollision::ImpossibleDirection
-        );
-    }
-
-    #[test]
-    fn basic_collision_missed() {
-        let e = edge(vec2(0., 0.), vec2(0., 10.));
-        let v = vec2(5., 15.);
-        let m = vec2(-10., 0.);
-        match e.vertex_collision_vertex_is_moving_test(v, m)
-            .collision
-            .unwrap_err()
-        {
-            NoCollision::OutsideEdge => (),
-            _ => panic!(),
-        }
-    }
-
-    #[test]
-    fn parallel() {
-        let e = edge(vec2(0., 0.), vec2(0., 10.));
-        let v = vec2(1., 0.);
-        let m = vec2(0., 1.);
-        match e.vertex_collision_vertex_is_moving_test(v, m)
-            .collision
-            .unwrap_err()
-        {
-            NoCollision::Parallel => (),
-            _ => panic!(),
-        }
-    }
-
-    #[test]
-    fn colinear() {
-        let e = edge(vec2(0., 0.), vec2(0., 10.));
-        let v = vec2(0., 11.);
-        let m = vec2(0., -4.);
-        let c = e.vertex_collision_vertex_is_moving_test(v, m);
-        let movement = c.movement.movement.vector();
-        assert_eq!(mul(movement.x), mul(0.));
-        assert_eq!(mul(movement.y), mul(-4.));
-    }
-
-    #[test]
-    fn slide() {
-        let e = edge(vec2(0., 0.), vec2(0., 10.));
-        let v = vec2(2., 0.);
-        let m = vec2(-4., 4.);
-        let c = e.vertex_collision_vertex_is_moving_test(v, m);
-        let movement = c.movement.movement.vector();
-        let slide = c.movement.slide.vector();
-        assert_eq!(mul(movement.x), mul(-2.));
-        assert_eq!(mul(movement.y), mul(2.));
-        assert_eq!(mul(slide.x), mul(0.));
-        assert_eq!(mul(slide.y), mul(2.));
-    }
-
-    #[test]
-    fn start_on_edge() {
-        let e = edge(vec2(0., 0.), vec2(0., 10.));
-        let v = vec2(0., 5.);
-        let m = vec2(-4., 4.);
-        let c = e.vertex_collision_vertex_is_moving_test(v, m);
-        let movement = c.movement.movement.vector();
-        let slide = c.movement.slide.vector();
-        assert_eq!(mul(movement.x), mul(0.));
-        assert_eq!(mul(movement.y), mul(0.));
-        assert_eq!(mul(slide.x), mul(0.));
-        assert_eq!(mul(slide.y), mul(4.));
-    }
-
-    #[test]
-    fn escape_from_edge() {
-        let e = edge(vec2(0., 0.), vec2(0., 10.));
-        let v = vec2(0., 5.);
-        let m = vec2(4., 4.);
-        assert_eq!(
-            e.vertex_collision_vertex_is_moving_test(v, m)
-                .collision
-                .unwrap_err(),
-            NoCollision::ImpossibleDirection
-        );
-    }
-
-    #[test]
-    fn edge_is_moving() {
-        let e = edge(vec2(0., 0.), vec2(0., 10.));
-        let v = vec2(5., 5.);
-        let m = vec2(10., 2.);
-        let c = e.vertex_collision_edge_is_moving_test(v, m);
-        let movement = c.movement.movement.vector();
-        let slide = c.movement.slide.vector();
-        assert_eq!(mul(movement.x), mul(5.));
-        assert_eq!(mul(movement.y), mul(1.));
-        assert_eq!(mul(slide.x), mul(0.));
-        assert_eq!(mul(slide.y), mul(1.));
     }
 }
