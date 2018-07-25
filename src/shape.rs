@@ -2,7 +2,7 @@ use aabb::Aabb;
 use axis_aligned_rect::AxisAlignedRect;
 use cgmath::Vector2;
 use collide::Collide;
-use left_solid_edge::MovementWithSlide;
+use left_solid_edge::CollisionWithSlide;
 use line_segment::LineSegment;
 
 #[derive(Debug, Clone)]
@@ -24,7 +24,7 @@ impl Shape {
         stationary: &Self,
         stationary_position: Vector2<f64>,
         movement_vector: Vector2<f64>,
-    ) -> MovementWithSlide {
+    ) -> Option<CollisionWithSlide> {
         match self {
             &Shape::AxisAlignedRect(ref moving) => match stationary {
                 &Shape::AxisAlignedRect(ref stationary) => moving

@@ -1,7 +1,7 @@
 use aabb::Aabb;
 use best::BestSet;
 use cgmath::Vector2;
-use left_solid_edge::{CollisionMovement, LeftSolidEdge, MovementWithSlide};
+use left_solid_edge::{CollisionWithSlide, LeftSolidEdge};
 
 pub trait Collide {
     fn aabb(&self, top_left: Vector2<f64>) -> Aabb;
@@ -21,15 +21,17 @@ pub trait Collide {
     ) where
         Self: Sized,
         StationaryShape: Collide + ::std::fmt::Debug,
-        F: FnMut(CollisionMovement),
+        F: FnMut(CollisionWithSlide),
     {
         self.for_each_left_solid_edge_facing(movement, |rel_edge| {
             let moving_edge = rel_edge.add_vector(position);
             stationary_shape.for_each_left_solid_edge_facing(-movement, |rel_edge| {
                 let stationary_edge = rel_edge.add_vector(stationary_position);
-                let collision_movement =
-                    moving_edge.collide_with_stationary_edge(&stationary_edge, movement);
-                f(collision_movement);
+                if let Some(collision_movement) =
+                    moving_edge.collide_with_stationary_edge(&stationary_edge, movement)
+                {
+                    f(collision_movement);
+                }
             });
         });
     }
@@ -39,7 +41,7 @@ pub trait Collide {
         stationary_shape: &StationaryShape,
         stationary_position: Vector2<f64>,
         movement: Vector2<f64>,
-    ) -> MovementWithSlide
+    ) -> Option<CollisionWithSlide>
     where
         Self: Sized,
         StationaryShape: Collide + ::std::fmt::Debug,
@@ -56,9 +58,6 @@ pub trait Collide {
             },
         );
 
-        shortest_movement
-            .into_value()
-            .map(|c| c.movement)
-            .unwrap_or_else(|| MovementWithSlide::new_just_movement(movement))
+        shortest_movement.into_value()
     }
 }

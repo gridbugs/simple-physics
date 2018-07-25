@@ -1,8 +1,7 @@
 use aabb::Aabb;
 use cgmath::{Vector2, vec2};
 use collide::Collide;
-use left_solid_edge::EPSILON;
-use left_solid_edge::LeftSolidEdge;
+use left_solid_edge::{LeftSolidEdge, EPSILON};
 
 #[derive(Debug, Clone)]
 pub struct AxisAlignedRect {

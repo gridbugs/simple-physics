@@ -1,7 +1,7 @@
 use aabb::Aabb;
 use best::BestSet;
 use cgmath::Vector2;
-use left_solid_edge::{MovementWithSlide, EPSILON};
+use left_solid_edge::CollisionWithSlide;
 use shape::Shape;
 
 pub type EntityId = u32;
@@ -26,7 +26,7 @@ impl<'a> ShapePosition<'a> {
         &self,
         other: ShapePosition,
         movement: Vector2<f64>,
-    ) -> MovementWithSlide {
+    ) -> Option<CollisionWithSlide> {
         self.shape.movement_collision_test(
             self.position,
             other.shape,
@@ -44,7 +44,7 @@ fn allowed_movement_step<F>(
     shape_position: ShapePosition,
     movement: Vector2<f64>,
     for_each_shape_position: &F,
-) -> MovementWithSlide
+) -> Option<CollisionWithSlide>
 where
     F: ForEachShapePosition,
 {
@@ -53,15 +53,15 @@ where
         shape_position.movement_aabb(movement),
         |other_shape_position: ShapePosition| {
             if other_shape_position.entity_id != shape_position.entity_id {
-                let movement = shape_position
-                    .movement_collision_test(other_shape_position, movement);
-                shortest_movement.insert_le(movement);
+                if let Some(movement) =
+                    shape_position.movement_collision_test(other_shape_position, movement)
+                {
+                    shortest_movement.insert_le(movement);
+                }
             }
         },
     );
-    shortest_movement
-        .into_value()
-        .unwrap_or_else(|| MovementWithSlide::new_just_movement(movement))
+    shortest_movement.into_value()
 }
 
 pub fn position_after_allowde_movement<F>(
@@ -75,19 +75,22 @@ where
     let mut position = shape_position.position;
     const MAX_ITERATIONS: usize = 16;
     for _ in 0..MAX_ITERATIONS {
-        let allowed_movement = allowed_movement_step(
+        match allowed_movement_step(
             ShapePosition {
                 position,
                 ..shape_position
             },
             movement,
             for_each_shape_position,
-        );
-        position += allowed_movement.movement.vector();
-        if allowed_movement.slide.magnitude2() > EPSILON {
-            movement = allowed_movement.slide.vector();
-        } else {
-            break;
+        ) {
+            None => {
+                position += movement;
+                break;
+            }
+            Some(collision_with_slide) => {
+                position += collision_with_slide.movement_to_collision(movement);
+                movement = collision_with_slide.slide(movement);
+            }
         }
     }
     position
