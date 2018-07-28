@@ -1,14 +1,14 @@
 use aabb::Aabb;
-use axis_aligned_rect::AxisAlignedRect;
+use axis_aligned_rect;
+use best::BestMultiSet;
 use cgmath::Vector2;
 use collide::Collide;
 use left_solid_edge::CollisionWithSlide;
 use line_segment::LineSegment;
-use best::BestMultiSet;
 
 #[derive(Debug, Clone)]
 pub enum Shape {
-    AxisAlignedRect(AxisAlignedRect),
+    AxisAlignedRect(axis_aligned_rect::AxisAlignedRect),
     LineSegment(LineSegment),
 }
 
@@ -30,14 +30,14 @@ impl Shape {
         match self {
             &Shape::AxisAlignedRect(ref moving) => match stationary {
                 &Shape::AxisAlignedRect(ref stationary) => moving
-                    .movement_collision_test_(
+                    .movement_collision_test(
                         position,
                         stationary,
                         stationary_position,
                         movement_vector,
                         closest_collisions,
                     ),
-                &Shape::LineSegment(ref stationary) => moving.movement_collision_test_(
+                &Shape::LineSegment(ref stationary) => moving.movement_collision_test(
                     position,
                     stationary,
                     stationary_position,

@@ -1,7 +1,6 @@
 use aabb::Aabb;
-use cgmath::{InnerSpace, Vector2, vec2};
-use collide::Collide;
-use left_solid_edge::LeftSolidEdge;
+use cgmath::{vec2, InnerSpace, Vector2};
+use collide::{Collide, Edge};
 
 const WIDTH: f64 = 0.1;
 
@@ -24,11 +23,11 @@ impl LineSegment {
     pub fn vector(&self) -> Vector2<f64> {
         self.end - self.start
     }
-    fn left_solid_edge(&self) -> LeftSolidEdge {
-        LeftSolidEdge::new(self.start, self.end)
+    fn left_solid_edge(&self) -> Edge {
+        Edge::new(self.start, self.end)
     }
-    fn left_solid_edge_flipped(&self) -> LeftSolidEdge {
-        LeftSolidEdge::new(self.end, self.start)
+    fn left_solid_edge_flipped(&self) -> Edge {
+        Edge::new(self.end, self.start)
     }
 }
 
@@ -48,7 +47,7 @@ impl Collide for LineSegment {
         Aabb::new(top_left, bottom_right - top_left)
     }
 
-    fn for_each_left_solid_edge_facing<F: FnMut(LeftSolidEdge)>(
+    fn for_each_left_solid_edge_facing<F: FnMut(Edge)>(
         &self,
         _direction: Vector2<f64>,
         mut f: F,
@@ -59,7 +58,7 @@ impl Collide for LineSegment {
         let b = self.add_vector(-left).left_solid_edge();
         f(a);
         f(b);
-        f(LeftSolidEdge::new(a.end, b.start));
-        f(LeftSolidEdge::new(b.end, a.start));
+        f(Edge::new(a.end(), b.start()));
+        f(Edge::new(b.end(), a.start()));
     }
 }

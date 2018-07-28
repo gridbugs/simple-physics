@@ -27,8 +27,8 @@ use gfx::Device;
 use glutin::GlContext;
 use glutin_window::GlutinWindow;
 use graphics::Renderer;
-use shape::Shape;
 use movement::MovementContext;
+use shape::Shape;
 
 enum ExternalEvent {
     Quit,

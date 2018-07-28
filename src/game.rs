@@ -1,6 +1,6 @@
 use aabb::Aabb;
 use axis_aligned_rect::AxisAlignedRect;
-use cgmath::{ElementWise, InnerSpace, Vector2, vec2};
+use cgmath::{vec2, ElementWise, InnerSpace, Vector2};
 use fnv::FnvHashMap;
 use line_segment::LineSegment;
 use loose_quad_tree::LooseQuadTree;
@@ -169,7 +169,7 @@ impl GameState {
         self.clear();
         let player_id = self.add_common(EntityCommon::new(
             vec2(700., 0.),
-            Shape::AxisAlignedRect(AxisAlignedRect::new(vec2(32., 64.))),
+            Shape::AxisAlignedRect(AxisAlignedRect::new_character(vec2(32., 64.))),
             [1., 0., 0.],
         ));
         self.player_id = Some(player_id);
@@ -188,7 +188,7 @@ impl GameState {
         ));
         self.add_static_solid(EntityCommon::new(
             vec2(150., 250.),
-            Shape::AxisAlignedRect(AxisAlignedRect::new(vec2(500., 20.))),
+            Shape::AxisAlignedRect(AxisAlignedRect::new_floor_only(vec2(500., 20.))),
             [1., 1., 1.],
         ));
         self.add_static_solid(EntityCommon::new(
@@ -246,7 +246,10 @@ impl GameState {
         ));
         self.add_static_solid(EntityCommon::new(
             vec2(300., 470.),
-            Shape::LineSegment(LineSegment::new_both_solid(vec2(0., 0.), vec2(32., 32.))),
+            Shape::LineSegment(LineSegment::new_both_solid(
+                vec2(0., 0.),
+                vec2(32., 32.),
+            )),
             [0., 1., 0.],
         ));
     }
@@ -272,7 +275,9 @@ impl GameState {
                     *velocity,
                     self,
                 );
-                changes.velocity.push((*id, new_position - common.position));
+                changes
+                    .velocity
+                    .push((*id, new_position - common.position));
                 changes.position.push((*id, new_position));
             }
         }
