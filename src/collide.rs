@@ -1,5 +1,5 @@
 use aabb::Aabb;
-use best::BestSet;
+use best::BestMultiSet;
 use cgmath::Vector2;
 use left_solid_edge::{CollisionWithSlide, LeftSolidEdge};
 
@@ -41,23 +41,19 @@ pub trait Collide {
         stationary_shape: &StationaryShape,
         stationary_position: Vector2<f64>,
         movement: Vector2<f64>,
-    ) -> Option<CollisionWithSlide>
-    where
+        closest_collisions: &mut BestMultiSet<CollisionWithSlide>,
+    ) where
         Self: Sized,
         StationaryShape: Collide + ::std::fmt::Debug,
     {
-        let mut shortest_movement = BestSet::new();
-
         self.for_each_movement_collision_(
             position,
             stationary_shape,
             stationary_position,
             movement,
             |collision_movement| {
-                shortest_movement.insert_le(collision_movement);
+                closest_collisions.insert_lt(collision_movement);
             },
         );
-
-        shortest_movement.into_value()
     }
 }

@@ -4,7 +4,7 @@ use cgmath::{ElementWise, InnerSpace, Vector2, vec2};
 use fnv::FnvHashMap;
 use line_segment::LineSegment;
 use loose_quad_tree::LooseQuadTree;
-use movement::{self, EntityId, ForEachShapePosition, ShapePosition};
+use movement::{EntityId, ForEachShapePosition, MovementContext, ShapePosition};
 use shape::Shape;
 
 fn clamp(value: f64, min: f64, max: f64) -> f64 {
@@ -198,9 +198,20 @@ impl GameState {
         ));
         self.add_static_solid(EntityCommon::new(
             vec2(50., 500.),
-            Shape::AxisAlignedRect(AxisAlignedRect::new(vec2(800., 20.))),
+            Shape::AxisAlignedRect(AxisAlignedRect::new(vec2(700., 20.))),
             [1., 1., 0.],
         ));
+        self.add_static_solid(EntityCommon::new(
+            vec2(760., 500.),
+            Shape::AxisAlignedRect(AxisAlignedRect::new(vec2(20., 20.))),
+            [1., 1., 0.],
+        ));
+        self.add_static_solid(EntityCommon::new(
+            vec2(813., 500.),
+            Shape::AxisAlignedRect(AxisAlignedRect::new(vec2(20., 20.))),
+            [1., 1., 0.],
+        ));
+
         self.add_static_solid(EntityCommon::new(
             vec2(20., 20.),
             Shape::LineSegment(LineSegment::new_both_solid(
@@ -239,7 +250,12 @@ impl GameState {
             [0., 1., 0.],
         ));
     }
-    pub fn update(&mut self, input_model: &InputModel, changes: &mut GameStateChanges) {
+    pub fn update(
+        &mut self,
+        input_model: &InputModel,
+        changes: &mut GameStateChanges,
+        movement_context: &mut MovementContext,
+    ) {
         let player_id = self.player_id.expect("No player id");
         if let Some(velocity) = self.velocity.get_mut(&player_id) {
             *velocity = update_player_velocity(*velocity, input_model);
@@ -251,7 +267,7 @@ impl GameState {
                     position: common.position,
                     shape: &common.shape,
                 };
-                let new_position = movement::position_after_allowde_movement(
+                let new_position = movement_context.position_after_allowed_movement(
                     shape_position,
                     *velocity,
                     self,

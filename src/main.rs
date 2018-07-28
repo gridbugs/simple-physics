@@ -28,6 +28,7 @@ use glutin::GlContext;
 use glutin_window::GlutinWindow;
 use graphics::Renderer;
 use shape::Shape;
+use movement::MovementContext;
 
 enum ExternalEvent {
     Quit,
@@ -97,6 +98,7 @@ fn main() {
     game_state.init_demo();
 
     let mut input_model = InputModel::default();
+    let mut movement_context = MovementContext::default();
 
     loop {
         encoder.clear(&render_target_view, [0.0, 0.0, 0.0, 1.0]);
@@ -105,7 +107,7 @@ fn main() {
             Some(ExternalEvent::Reset) => game_state.init_demo(),
             None => (),
         }
-        game_state.update(&input_model, &mut game_changes);
+        game_state.update(&input_model, &mut game_changes, &mut movement_context);
         {
             let mut frame = renderer.prepare_frame(&mut factory);
             let mut updater = frame.updater();

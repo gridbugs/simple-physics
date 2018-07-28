@@ -4,6 +4,7 @@ use cgmath::Vector2;
 use collide::Collide;
 use left_solid_edge::CollisionWithSlide;
 use line_segment::LineSegment;
+use best::BestMultiSet;
 
 #[derive(Debug, Clone)]
 pub enum Shape {
@@ -24,7 +25,8 @@ impl Shape {
         stationary: &Self,
         stationary_position: Vector2<f64>,
         movement_vector: Vector2<f64>,
-    ) -> Option<CollisionWithSlide> {
+        closest_collisions: &mut BestMultiSet<CollisionWithSlide>,
+    ) {
         match self {
             &Shape::AxisAlignedRect(ref moving) => match stationary {
                 &Shape::AxisAlignedRect(ref stationary) => moving
@@ -33,12 +35,14 @@ impl Shape {
                         stationary,
                         stationary_position,
                         movement_vector,
+                        closest_collisions,
                     ),
                 &Shape::LineSegment(ref stationary) => moving.movement_collision_test_(
                     position,
                     stationary,
                     stationary_position,
                     movement_vector,
+                    closest_collisions,
                 ),
             },
             &Shape::LineSegment(_) => panic!(),

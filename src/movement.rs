@@ -1,8 +1,13 @@
 use aabb::Aabb;
-use best::BestSet;
+use best::BestMultiSet;
 use cgmath::Vector2;
 use left_solid_edge::CollisionWithSlide;
 use shape::Shape;
+
+#[derive(Default)]
+pub struct MovementContext {
+    closest_collisions: BestMultiSet<CollisionWithSlide>,
+}
 
 pub type EntityId = u32;
 
@@ -26,12 +31,14 @@ impl<'a> ShapePosition<'a> {
         &self,
         other: ShapePosition,
         movement: Vector2<f64>,
-    ) -> Option<CollisionWithSlide> {
+        closest_collisions: &mut BestMultiSet<CollisionWithSlide>,
+    ) {
         self.shape.movement_collision_test(
             self.position,
             other.shape,
             other.position,
             movement,
+            closest_collisions,
         )
     }
 }
@@ -40,58 +47,61 @@ pub trait ForEachShapePosition {
     fn for_each<F: FnMut(ShapePosition)>(&self, aabb: Aabb, f: F);
 }
 
-fn allowed_movement_step<F>(
-    shape_position: ShapePosition,
-    movement: Vector2<f64>,
-    for_each_shape_position: &F,
-) -> Option<CollisionWithSlide>
-where
-    F: ForEachShapePosition,
-{
-    let mut shortest_movement = BestSet::new();
-    for_each_shape_position.for_each(
-        shape_position.movement_aabb(movement),
-        |other_shape_position: ShapePosition| {
-            if other_shape_position.entity_id != shape_position.entity_id {
-                if let Some(movement) =
-                    shape_position.movement_collision_test(other_shape_position, movement)
-                {
-                    shortest_movement.insert_le(movement);
+impl MovementContext {
+    fn allowed_movement_step<F>(
+        &mut self,
+        shape_position: ShapePosition,
+        movement: Vector2<f64>,
+        for_each_shape_position: &F,
+    ) where
+        F: ForEachShapePosition,
+    {
+        self.closest_collisions.clear();
+        for_each_shape_position.for_each(
+            shape_position.movement_aabb(movement),
+            |other_shape_position: ShapePosition| {
+                if other_shape_position.entity_id != shape_position.entity_id {
+                    shape_position.movement_collision_test(
+                        other_shape_position,
+                        movement,
+                        &mut self.closest_collisions,
+                    );
+                }
+            },
+        );
+    }
+
+    pub fn position_after_allowed_movement<F>(
+        &mut self,
+        shape_position: ShapePosition,
+        mut movement: Vector2<f64>,
+        for_each_shape_position: &F,
+    ) -> Vector2<f64>
+    where
+        F: ForEachShapePosition,
+    {
+        let mut position = shape_position.position;
+        const MAX_ITERATIONS: usize = 16;
+        for _ in 0..MAX_ITERATIONS {
+            self.allowed_movement_step(
+                ShapePosition {
+                    position,
+                    ..shape_position
+                },
+                movement,
+                for_each_shape_position,
+            );
+            match self.closest_collisions.iter().next() {
+                None => {
+                    position += movement;
+                    break;
+                }
+                Some(collision_with_slide) => {
+                    position += collision_with_slide.movement_to_collision(movement);
+                    movement = collision_with_slide.slide(movement);
                 }
             }
-        },
-    );
-    shortest_movement.into_value()
-}
-
-pub fn position_after_allowde_movement<F>(
-    shape_position: ShapePosition,
-    mut movement: Vector2<f64>,
-    for_each_shape_position: &F,
-) -> Vector2<f64>
-where
-    F: ForEachShapePosition,
-{
-    let mut position = shape_position.position;
-    const MAX_ITERATIONS: usize = 16;
-    for _ in 0..MAX_ITERATIONS {
-        match allowed_movement_step(
-            ShapePosition {
-                position,
-                ..shape_position
-            },
-            movement,
-            for_each_shape_position,
-        ) {
-            None => {
-                position += movement;
-                break;
-            }
-            Some(collision_with_slide) => {
-                position += collision_with_slide.movement_to_collision(movement);
-                movement = collision_with_slide.slide(movement);
-            }
         }
+        position
     }
-    position
 }
