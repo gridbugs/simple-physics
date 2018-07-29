@@ -44,15 +44,39 @@ impl EdgePosition {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub struct WhichVertices(u8);
+const MOVING_START: usize = 0;
+const MOVING_END: usize = 1;
+const STATIONARY_START: usize = 2;
+const STATIONARY_END: usize = 3;
+
+impl WhichVertices {
+    pub fn moving_start(self) -> bool {
+        self.0 & (1 << MOVING_START) != 0
+    }
+    pub fn moving_end(self) -> bool {
+        self.0 & (1 << MOVING_END) != 0
+    }
+    pub fn _stationary_start(self) -> bool {
+        self.0 & (1 << STATIONARY_START) != 0
+    }
+    pub fn _stationary_end(self) -> bool {
+        self.0 & (1 << STATIONARY_END) != 0
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 struct VertexCollision {
     movement_multiplier: f64,
     edge_vector_multiplier: f64,
     edge_vector: Vector2<f64>,
+    which_vertices: WhichVertices,
 }
 
 pub struct EdgeVertexCollisions {
     pub _stationary_edge_position: EdgePosition,
     pub _moving_edge_position: EdgePosition,
+    pub which_vertices: WhichVertices,
     collision_with_slide: CollisionWithSlide,
 }
 
@@ -165,30 +189,35 @@ impl LeftSolidEdge {
         if moving.cross > -EPSILON {
             return None;
         }
-        const MOVING_START: usize = 0;
-        const MOVING_END: usize = 1;
-        const STATIONARY_START: usize = 2;
-        const STATIONARY_END: usize = 3;
         let vertex_collisions = [
             self.collide_moving_vertex(
                 other.start,
                 reverse_movement,
                 START_MULTIPLIERS,
                 moving,
+                WhichVertices(1 << STATIONARY_START),
             ),
             self.collide_moving_vertex(
                 other.end,
                 reverse_movement,
                 END_MULTIPLIERS,
                 moving,
+                WhichVertices(1 << STATIONARY_END),
             ),
             other.collide_moving_vertex(
                 self.start,
                 movement,
                 START_MULTIPLIERS,
                 stationary,
+                WhichVertices(1 << MOVING_START),
             ),
-            other.collide_moving_vertex(self.end, movement, END_MULTIPLIERS, stationary),
+            other.collide_moving_vertex(
+                self.end,
+                movement,
+                END_MULTIPLIERS,
+                stationary,
+                WhichVertices(1 << MOVING_END),
+            ),
         ];
         let (min_movement, edge_vector) = vertex_collisions
             .iter()
@@ -215,6 +244,17 @@ impl LeftSolidEdge {
         let _stationary_edge_position =
             EdgePosition::new(stationary_start, stationary_end);
 
+        let which_vertices = WhichVertices(
+            moving_start.map(|c| c.which_vertices.0).unwrap_or(0)
+                | moving_end.map(|c| c.which_vertices.0).unwrap_or(0)
+                | stationary_start
+                    .map(|c| c.which_vertices.0)
+                    .unwrap_or(0)
+                | stationary_end
+                    .map(|c| c.which_vertices.0)
+                    .unwrap_or(0),
+        );
+
         let collision_with_slide = CollisionWithSlide {
             movement_multiplier: min_movement,
             edge_vector,
@@ -224,6 +264,7 @@ impl LeftSolidEdge {
             collision_with_slide,
             _moving_edge_position,
             _stationary_edge_position,
+            which_vertices,
         })
     }
 
@@ -233,6 +274,7 @@ impl LeftSolidEdge {
         vertex_movement: Vector2<f64>,
         edge_multipliers: Multipliers,
         evc: EdgeVectorAndCross,
+        which_vertices: WhichVertices,
     ) -> Option<VertexCollision> {
         let vertex_to_start = self.start - vertex;
         let edge_vector_multiplier =
@@ -251,6 +293,7 @@ impl LeftSolidEdge {
             movement_multiplier,
             edge_vector_multiplier,
             edge_vector: evc.vector,
+            which_vertices,
         })
     }
 }

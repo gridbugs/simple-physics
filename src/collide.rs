@@ -1,7 +1,7 @@
 use aabb::Aabb;
 use best::BestMultiSet;
 use cgmath::Vector2;
-use left_solid_edge::{EdgeVertexCollisions, LeftSolidEdge};
+use left_solid_edge::{EdgeVertexCollisions, LeftSolidEdge, WhichVertices};
 use std::cmp::Ordering;
 
 pub struct CollisionInfo {
@@ -37,6 +37,10 @@ impl CollisionInfo {
     pub fn stationary_edge(&self) -> Edge {
         self.stationary_edge
     }
+
+    pub fn which_vertices(&self) -> WhichVertices {
+        self.collision.which_vertices
+    }
 }
 
 pub mod channels {
@@ -44,10 +48,16 @@ pub mod channels {
     pub const FLOOR: u32 = 1 << 1;
 }
 
+pub mod flags {
+    pub const FLOOR_END: u32 = 1 << 0;
+    pub const FLOOR_START: u32 = 1 << 1;
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct Edge {
     pub left_solid_edge: LeftSolidEdge,
     pub channels: u32,
+    pub flags: u32,
 }
 
 impl Edge {
@@ -55,10 +65,14 @@ impl Edge {
         Edge {
             left_solid_edge: LeftSolidEdge::new(start, end),
             channels: channels::MAIN,
+            flags: 0,
         }
     }
     pub fn with_channels(self, channels: u32) -> Self {
         Self { channels, ..self }
+    }
+    pub fn with_flags(self, flags: u32) -> Self {
+        Self { flags, ..self }
     }
     pub fn start(&self) -> Vector2<f64> {
         self.left_solid_edge.start

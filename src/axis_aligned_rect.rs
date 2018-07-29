@@ -1,6 +1,6 @@
 use aabb::Aabb;
 use cgmath::{vec2, Vector2};
-use collide::{channels, Collide, Edge};
+use collide::{channels, flags, Collide, Edge};
 use left_solid_edge::EPSILON;
 
 #[derive(Debug, Clone, Copy)]
@@ -37,6 +37,28 @@ impl Metadata {
             Metadata::FloorOnly => 0,
             Metadata::Character => channels::MAIN,
             _ => channels::MAIN,
+        }
+    }
+    fn top_flags(self) -> u32 {
+        match self {
+            _ => 0,
+        }
+    }
+    fn bottom_flags(self) -> u32 {
+        match self {
+            _ => 0,
+        }
+    }
+    fn left_flags(self) -> u32 {
+        match self {
+            Metadata::Character => flags::FLOOR_START,
+            _ => 0,
+        }
+    }
+    fn right_flags(self) -> u32 {
+        match self {
+            Metadata::Character => flags::FLOOR_END,
+            _ => 0,
         }
     }
 }
@@ -107,18 +129,23 @@ impl Collide for AxisAlignedRect {
     ) {
         if direction.y > -EPSILON {
             f(self.bottom()
-                .with_channels(self.metadata.bottom_channel()))
+                .with_channels(self.metadata.bottom_channel())
+                .with_flags(self.metadata.bottom_flags()))
         }
         if direction.y < EPSILON {
-            f(self.top().with_channels(self.metadata.top_channel()))
+            f(self.top()
+                .with_channels(self.metadata.top_channel())
+                .with_flags(self.metadata.top_flags()))
         }
         if direction.x > -EPSILON {
             f(self.right()
-                .with_channels(self.metadata.right_channel()))
+                .with_channels(self.metadata.right_channel())
+                .with_flags(self.metadata.right_flags()))
         }
         if direction.x < EPSILON {
             f(self.left()
-                .with_channels(self.metadata.left_channel()))
+                .with_channels(self.metadata.left_channel())
+                .with_flags(self.metadata.left_flags()))
         }
     }
 }

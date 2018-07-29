@@ -1,7 +1,7 @@
 use aabb::Aabb;
 use best::BestMultiSet;
 use cgmath::{vec2, InnerSpace, Vector2};
-use collide::{channels, CollisionInfo};
+use collide::{channels, flags, CollisionInfo};
 use shape::Shape;
 
 #[derive(Default)]
@@ -18,8 +18,28 @@ pub struct ShapePosition<'a> {
     pub shape: &'a Shape,
 }
 
+fn bottom_collision(collision_info: &CollisionInfo) -> bool {
+    if collision_info.moving_edge().channels & channels::FLOOR != 0 {
+        return true;
+    }
+
+    if collision_info.moving_edge().flags & flags::FLOOR_START != 0
+        && collision_info.which_vertices().moving_start()
+    {
+        return true;
+    }
+
+    if collision_info.moving_edge().flags & flags::FLOOR_END != 0
+        && collision_info.which_vertices().moving_end()
+    {
+        return true;
+    }
+
+    false
+}
+
 fn jump_predicate(collision_info: &CollisionInfo) -> bool {
-    if collision_info.moving_edge().channels & channels::FLOOR == 0 {
+    if !bottom_collision(collision_info) {
         return false;
     }
 
