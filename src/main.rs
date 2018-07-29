@@ -57,6 +57,7 @@ fn process_input(
                             glutin::VirtualKeyCode::Right => input_model.set_right(1.),
                             glutin::VirtualKeyCode::Up => input_model.set_up(1.),
                             glutin::VirtualKeyCode::Down => input_model.set_down(1.),
+                            glutin::VirtualKeyCode::Space => input_model.set_jump(true),
                             _ => (),
                         },
                         glutin::ElementState::Released => match virtual_keycode {
@@ -64,6 +65,7 @@ fn process_input(
                             glutin::VirtualKeyCode::Right => input_model.set_right(0.),
                             glutin::VirtualKeyCode::Up => input_model.set_up(0.),
                             glutin::VirtualKeyCode::Down => input_model.set_down(0.),
+                            glutin::VirtualKeyCode::Space => input_model.set_jump(false),
                             _ => (),
                         },
                     }
@@ -130,6 +132,6 @@ fn main() {
         encoder.flush(&mut device);
         window.swap_buffers().expect("Failed to swap buffers");
         device.cleanup();
-        //        ::std::thread::sleep(::std::time::Duration::from_millis(100));
+        input_model.end_frame();
     }
 }

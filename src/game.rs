@@ -6,6 +6,7 @@ use line_segment::LineSegment;
 use loose_quad_tree::LooseQuadTree;
 use movement::{EntityId, ForEachShapePosition, MovementContext, ShapePosition};
 use shape::Shape;
+use std::collections::HashMap;
 
 fn clamp(value: f64, min: f64, max: f64) -> f64 {
     value.max(min).min(max)
@@ -16,6 +17,8 @@ pub struct InputModel {
     right: f64,
     up: f64,
     down: f64,
+    jump_current: bool,
+    jump_previous: bool,
 }
 
 impl Default for InputModel {
@@ -25,11 +28,16 @@ impl Default for InputModel {
             right: 0.,
             up: 0.,
             down: 0.,
+            jump_current: false,
+            jump_previous: false,
         }
     }
 }
 
 impl InputModel {
+    pub fn set_jump(&mut self, jump: bool) {
+        self.jump_current = jump;
+    }
     pub fn set_left(&mut self, value: f64) {
         self.left = clamp(value, 0., 1.);
     }
@@ -55,6 +63,12 @@ impl InputModel {
         } else {
             raw
         }
+    }
+    fn jump_this_frame(&self) -> bool {
+        self.jump_current && !self.jump_previous
+    }
+    pub fn end_frame(&mut self) {
+        self.jump_previous = self.jump_current
     }
 }
 
@@ -111,7 +125,7 @@ impl EntityCommon {
 #[derive(Default)]
 pub struct GameStateChanges {
     position: Vec<(EntityId, Vector2<f64>)>,
-    velocity: Vec<(EntityId, Vector2<f64>)>,
+    velocity: HashMap<EntityId, Vector2<f64>>,
 }
 
 pub struct GameState {
@@ -276,7 +290,7 @@ impl GameState {
                     *velocity,
                     self,
                 );
-                changes.velocity.push((*id, movement.velocity));
+                changes.velocity.insert(*id, movement.velocity);
                 changes.position.push((*id, movement.position));
                 can_jump = can_jump || movement.can_jump;
             }
@@ -286,7 +300,14 @@ impl GameState {
                 common.position = position;
             }
         }
-        for (id, velocity) in changes.velocity.drain(..) {
+        if can_jump && input_model.jump_this_frame() {
+            let player_velocity = changes
+                .velocity
+                .entry(player_id)
+                .or_insert(vec2(0., 0.));
+            *player_velocity -= vec2(0., 4.);
+        }
+        for (id, mut velocity) in changes.velocity.drain() {
             self.velocity.insert(id, velocity);
         }
     }

@@ -1,4 +1,3 @@
-use best::BestSet;
 use cgmath::{InnerSpace, Vector2};
 use std::cmp::Ordering;
 
@@ -9,9 +8,52 @@ pub struct LeftSolidEdge {
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-pub struct CollisionWithSlide {
+struct CollisionWithSlide {
     movement_multiplier: f64,
     edge_vector: Vector2<f64>,
+}
+
+pub enum EdgePosition {
+    Zero,
+    One(f64),
+    Two { min: f64, max: f64 },
+}
+
+impl EdgePosition {
+    fn new(a: Option<VertexCollision>, b: Option<VertexCollision>) -> Self {
+        match (a, b) {
+            (None, None) => EdgePosition::Zero,
+            (Some(x), None) | (None, Some(x)) => {
+                EdgePosition::One(x.edge_vector_multiplier)
+            }
+            (Some(a), Some(b)) => {
+                if a.edge_vector_multiplier < b.edge_vector_multiplier {
+                    EdgePosition::Two {
+                        min: a.edge_vector_multiplier,
+                        max: b.edge_vector_multiplier,
+                    }
+                } else {
+                    EdgePosition::Two {
+                        min: b.edge_vector_multiplier,
+                        max: a.edge_vector_multiplier,
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct VertexCollision {
+    movement_multiplier: f64,
+    edge_vector_multiplier: f64,
+    edge_vector: Vector2<f64>,
+}
+
+pub struct EdgeVertexCollisions {
+    pub _stationary_edge_position: EdgePosition,
+    pub _moving_edge_position: EdgePosition,
+    collision_with_slide: CollisionWithSlide,
 }
 
 impl PartialOrd for CollisionWithSlide {
@@ -33,15 +75,65 @@ impl CollisionWithSlide {
     }
 }
 
+impl EdgeVertexCollisions {
+    pub fn movement_to_collision(&self, movement_attempt: Vector2<f64>) -> Vector2<f64> {
+        self.collision_with_slide
+            .movement_to_collision(movement_attempt)
+    }
+
+    pub fn slide(&self, movement_attempt: Vector2<f64>) -> Vector2<f64> {
+        self.collision_with_slide.slide(movement_attempt)
+    }
+}
+
+impl PartialEq for EdgeVertexCollisions {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.collision_with_slide
+            .eq(&rhs.collision_with_slide)
+    }
+}
+impl PartialOrd for EdgeVertexCollisions {
+    fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
+        self.collision_with_slide
+            .partial_cmp(&rhs.collision_with_slide)
+    }
+}
+
 fn vector2_cross_product(v: Vector2<f64>, w: Vector2<f64>) -> f64 {
     v.x * w.y - v.y * w.x
 }
 
+#[derive(Debug, Clone, Copy)]
+struct Multipliers {
+    min: f64,
+    max: f64,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct EdgeVectorAndCross {
+    vector: Vector2<f64>,
+    cross: f64,
+}
+
+impl EdgeVectorAndCross {
+    fn new(edge: &LeftSolidEdge, movement: Vector2<f64>) -> Self {
+        let vector = edge.vector();
+        let cross = vector2_cross_product(movement, vector);
+        Self { vector, cross }
+    }
+}
+
 pub const EPSILON: f64 = 0.000001;
-const START_MIN_MULTIPLIER: f64 = EPSILON;
-const START_MAX_MULTIPLIER: f64 = 1. + EPSILON;
-const END_MIN_MULTIPLIER: f64 = -EPSILON;
-const END_MAX_MULTIPLIER: f64 = 1. - EPSILON;
+
+const START_MULTIPLIERS: Multipliers = Multipliers {
+    min: EPSILON,
+    max: 1. + EPSILON,
+};
+
+const END_MULTIPLIERS: Multipliers = Multipliers {
+    min: -EPSILON,
+    max: 1. - EPSILON,
+};
 
 impl LeftSolidEdge {
     pub fn new(start: Vector2<f64>, end: Vector2<f64>) -> Self {
@@ -55,7 +147,7 @@ impl LeftSolidEdge {
         }
     }
 
-    fn vector(&self) -> Vector2<f64> {
+    pub fn vector(&self) -> Vector2<f64> {
         self.end - self.start
     }
 
@@ -63,89 +155,102 @@ impl LeftSolidEdge {
         &self,
         other: &Self,
         movement: Vector2<f64>,
-    ) -> Option<CollisionWithSlide> {
-        let stationary_edge_vector = other.vector();
-        let stationary_edge_cross =
-            vector2_cross_product(movement, stationary_edge_vector);
-        if stationary_edge_cross > -EPSILON {
+    ) -> Option<EdgeVertexCollisions> {
+        let stationary = EdgeVectorAndCross::new(other, movement);
+        if stationary.cross > -EPSILON {
             return None;
         }
-        let moving_edge_vector = self.vector();
         let reverse_movement = -movement;
-        let moving_edge_cross =
-            vector2_cross_product(reverse_movement, moving_edge_vector);
-        if moving_edge_cross > -EPSILON {
+        let moving = EdgeVectorAndCross::new(self, -movement);
+        if moving.cross > -EPSILON {
             return None;
         }
-        let mut closest = BestSet::new();
-        if let Some(collision) = self.vertex_collision_vertex_is_moving(
-            other.start,
-            reverse_movement,
-            START_MIN_MULTIPLIER,
-            START_MAX_MULTIPLIER,
-            moving_edge_vector,
-            moving_edge_cross,
-        ) {
-            closest.insert_le(collision);
-        }
-        if let Some(collision) = self.vertex_collision_vertex_is_moving(
-            other.end,
-            reverse_movement,
-            END_MIN_MULTIPLIER,
-            END_MAX_MULTIPLIER,
-            moving_edge_vector,
-            moving_edge_cross,
-        ) {
-            closest.insert_le(collision);
-        }
-        if let Some(collision) = other.vertex_collision_vertex_is_moving(
-            self.start,
-            movement,
-            START_MIN_MULTIPLIER,
-            START_MAX_MULTIPLIER,
-            stationary_edge_vector,
-            stationary_edge_cross,
-        ) {
-            closest.insert_le(collision);
-        }
-        if let Some(collision) = other.vertex_collision_vertex_is_moving(
-            self.end,
-            movement,
-            END_MIN_MULTIPLIER,
-            END_MAX_MULTIPLIER,
-            stationary_edge_vector,
-            stationary_edge_cross,
-        ) {
-            closest.insert_le(collision);
-        }
-        closest.into_value()
+        const MOVING_START: usize = 0;
+        const MOVING_END: usize = 1;
+        const STATIONARY_START: usize = 2;
+        const STATIONARY_END: usize = 3;
+        let vertex_collisions = [
+            self.collide_moving_vertex(
+                other.start,
+                reverse_movement,
+                START_MULTIPLIERS,
+                moving,
+            ),
+            self.collide_moving_vertex(
+                other.end,
+                reverse_movement,
+                END_MULTIPLIERS,
+                moving,
+            ),
+            other.collide_moving_vertex(
+                self.start,
+                movement,
+                START_MULTIPLIERS,
+                stationary,
+            ),
+            other.collide_moving_vertex(self.end, movement, END_MULTIPLIERS, stationary),
+        ];
+        let (min_movement, edge_vector) = vertex_collisions
+            .iter()
+            .filter_map(|c| c.map(|c| (c.movement_multiplier, c.edge_vector)))
+            .min_by(|&(ref a, _), &(ref b, _)| {
+                a.partial_cmp(b).unwrap_or(Ordering::Equal)
+            })?;
+
+        let movement_filter = |c: VertexCollision| {
+            if c.movement_multiplier > min_movement {
+                None
+            } else {
+                Some(c)
+            }
+        };
+
+        let moving_start = vertex_collisions[MOVING_START].and_then(movement_filter);
+        let moving_end = vertex_collisions[MOVING_END].and_then(movement_filter);
+        let stationary_start =
+            vertex_collisions[STATIONARY_START].and_then(movement_filter);
+        let stationary_end = vertex_collisions[STATIONARY_END].and_then(movement_filter);
+
+        let _moving_edge_position = EdgePosition::new(moving_start, moving_end);
+        let _stationary_edge_position =
+            EdgePosition::new(stationary_start, stationary_end);
+
+        let collision_with_slide = CollisionWithSlide {
+            movement_multiplier: min_movement,
+            edge_vector,
+        };
+
+        Some(EdgeVertexCollisions {
+            collision_with_slide,
+            _moving_edge_position,
+            _stationary_edge_position,
+        })
     }
 
-    fn vertex_collision_vertex_is_moving(
+    fn collide_moving_vertex(
         &self,
         vertex: Vector2<f64>,
         vertex_movement: Vector2<f64>,
-        min_edge_multiplier: f64,
-        max_edge_multiplier: f64,
-        edge_vector: Vector2<f64>,
-        cross: f64,
-    ) -> Option<CollisionWithSlide> {
+        edge_multipliers: Multipliers,
+        evc: EdgeVectorAndCross,
+    ) -> Option<VertexCollision> {
         let vertex_to_start = self.start - vertex;
         let edge_vector_multiplier =
-            vector2_cross_product(vertex_to_start, vertex_movement) / cross;
-        if edge_vector_multiplier < min_edge_multiplier
-            || edge_vector_multiplier > max_edge_multiplier
+            vector2_cross_product(vertex_to_start, vertex_movement) / evc.cross;
+        if edge_vector_multiplier < edge_multipliers.min
+            || edge_vector_multiplier > edge_multipliers.max
         {
             return None;
         }
         let movement_multiplier =
-            vector2_cross_product(vertex_to_start, edge_vector) / cross;
+            vector2_cross_product(vertex_to_start, evc.vector) / evc.cross;
         if movement_multiplier < -EPSILON || movement_multiplier > 1. + EPSILON {
             return None;
         }
-        Some(CollisionWithSlide {
+        Some(VertexCollision {
             movement_multiplier,
-            edge_vector,
+            edge_vector_multiplier,
+            edge_vector: evc.vector,
         })
     }
 }

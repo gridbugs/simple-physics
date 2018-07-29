@@ -1,39 +1,41 @@
 use aabb::Aabb;
 use best::BestMultiSet;
 use cgmath::Vector2;
-use left_solid_edge::{CollisionWithSlide, LeftSolidEdge};
+use left_solid_edge::{EdgeVertexCollisions, LeftSolidEdge};
 use std::cmp::Ordering;
 
 pub struct CollisionInfo {
-    collision_with_slide: CollisionWithSlide,
-    moving_edge_channels: u32,
+    collision: EdgeVertexCollisions,
+    moving_edge: Edge,
+    stationary_edge: Edge,
 }
 
 impl PartialEq for CollisionInfo {
     fn eq(&self, rhs: &Self) -> bool {
-        self.collision_with_slide
-            .eq(&rhs.collision_with_slide)
+        self.collision.eq(&rhs.collision)
     }
 }
 impl PartialOrd for CollisionInfo {
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
-        self.collision_with_slide
-            .partial_cmp(&rhs.collision_with_slide)
+        self.collision.partial_cmp(&rhs.collision)
     }
 }
 
 impl CollisionInfo {
     pub fn movement_to_collision(&self, movement_attempt: Vector2<f64>) -> Vector2<f64> {
-        self.collision_with_slide
-            .movement_to_collision(movement_attempt)
+        self.collision.movement_to_collision(movement_attempt)
     }
 
     pub fn slide(&self, movement_attempt: Vector2<f64>) -> Vector2<f64> {
-        self.collision_with_slide.slide(movement_attempt)
+        self.collision.slide(movement_attempt)
     }
 
-    pub fn moving_edge_channels(&self) -> u32 {
-        self.moving_edge_channels
+    pub fn moving_edge(&self) -> Edge {
+        self.moving_edge
+    }
+
+    pub fn stationary_edge(&self) -> Edge {
+        self.stationary_edge
     }
 }
 
@@ -63,6 +65,9 @@ impl Edge {
     }
     pub fn end(&self) -> Vector2<f64> {
         self.left_solid_edge.end
+    }
+    pub fn vector(&self) -> Vector2<f64> {
+        self.left_solid_edge.vector()
     }
 }
 
@@ -101,8 +106,9 @@ pub trait Collide {
                         .collide_with_stationary_edge(&stationary_edge, movement)
                     {
                         let collision_info = CollisionInfo {
-                            collision_with_slide: collision_movement,
-                            moving_edge_channels: moving_rel_edge.channels,
+                            collision: collision_movement,
+                            moving_edge: moving_rel_edge,
+                            stationary_edge: stationary_rel_edge,
                         };
                         f(collision_info);
                     }

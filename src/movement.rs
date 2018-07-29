@@ -1,6 +1,6 @@
 use aabb::Aabb;
 use best::BestMultiSet;
-use cgmath::Vector2;
+use cgmath::{vec2, InnerSpace, Vector2};
 use collide::{channels, CollisionInfo};
 use shape::Shape;
 
@@ -16,6 +16,25 @@ pub struct ShapePosition<'a> {
     pub entity_id: EntityId,
     pub position: Vector2<f64>,
     pub shape: &'a Shape,
+}
+
+fn jump_predicate(collision_info: &CollisionInfo) -> bool {
+    if collision_info.moving_edge().channels & channels::FLOOR == 0 {
+        return false;
+    }
+
+    let dot = collision_info
+        .stationary_edge()
+        .vector()
+        .normalize()
+        .dot(vec2(0., 1.))
+        .abs();
+
+    if dot > 0.9 {
+        return false;
+    }
+
+    true
 }
 
 impl<'a> ShapePosition<'a> {
@@ -98,10 +117,7 @@ impl MovementContext {
                 movement,
                 for_each_shape_position,
             );
-            if self.closest_collisions
-                .iter()
-                .any(|c| c.moving_edge_channels() & channels::FLOOR != 0)
-            {
+            if self.closest_collisions.iter().any(jump_predicate) {
                 can_jump = true;
             }
             match self.closest_collisions.iter().next() {
