@@ -2,6 +2,40 @@ use aabb::Aabb;
 use best::BestMultiSet;
 use cgmath::Vector2;
 use left_solid_edge::{CollisionWithSlide, LeftSolidEdge};
+use std::cmp::Ordering;
+
+pub struct CollisionInfo {
+    collision_with_slide: CollisionWithSlide,
+    moving_edge_channels: u32,
+}
+
+impl PartialEq for CollisionInfo {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.collision_with_slide
+            .eq(&rhs.collision_with_slide)
+    }
+}
+impl PartialOrd for CollisionInfo {
+    fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
+        self.collision_with_slide
+            .partial_cmp(&rhs.collision_with_slide)
+    }
+}
+
+impl CollisionInfo {
+    pub fn movement_to_collision(&self, movement_attempt: Vector2<f64>) -> Vector2<f64> {
+        self.collision_with_slide
+            .movement_to_collision(movement_attempt)
+    }
+
+    pub fn slide(&self, movement_attempt: Vector2<f64>) -> Vector2<f64> {
+        self.collision_with_slide.slide(movement_attempt)
+    }
+
+    pub fn moving_edge_channels(&self) -> u32 {
+        self.moving_edge_channels
+    }
+}
 
 pub mod channels {
     pub const MAIN: u32 = 1 << 0;
@@ -50,7 +84,7 @@ pub trait Collide {
     ) where
         Self: Sized,
         StationaryShape: Collide,
-        F: FnMut(CollisionWithSlide),
+        F: FnMut(CollisionInfo),
     {
         self.for_each_left_solid_edge_facing(movement, |moving_rel_edge| {
             let moving_edge = moving_rel_edge.left_solid_edge.add_vector(position);
@@ -66,7 +100,11 @@ pub trait Collide {
                     if let Some(collision_movement) = moving_edge
                         .collide_with_stationary_edge(&stationary_edge, movement)
                     {
-                        f(collision_movement);
+                        let collision_info = CollisionInfo {
+                            collision_with_slide: collision_movement,
+                            moving_edge_channels: moving_rel_edge.channels,
+                        };
+                        f(collision_info);
                     }
                 },
             );
@@ -78,7 +116,7 @@ pub trait Collide {
         stationary_shape: &StationaryShape,
         stationary_position: Vector2<f64>,
         movement: Vector2<f64>,
-        closest_collisions: &mut BestMultiSet<CollisionWithSlide>,
+        closest_collisions: &mut BestMultiSet<CollisionInfo>,
     ) where
         Self: Sized,
         StationaryShape: Collide,

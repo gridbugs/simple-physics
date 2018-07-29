@@ -1,12 +1,12 @@
 use aabb::Aabb;
 use best::BestMultiSet;
 use cgmath::Vector2;
-use left_solid_edge::CollisionWithSlide;
+use collide::{channels, CollisionInfo};
 use shape::Shape;
 
 #[derive(Default)]
 pub struct MovementContext {
-    closest_collisions: BestMultiSet<CollisionWithSlide>,
+    closest_collisions: BestMultiSet<CollisionInfo>,
 }
 
 pub type EntityId = u32;
@@ -31,7 +31,7 @@ impl<'a> ShapePosition<'a> {
         &self,
         other: ShapePosition,
         movement: Vector2<f64>,
-        closest_collisions: &mut BestMultiSet<CollisionWithSlide>,
+        closest_collisions: &mut BestMultiSet<CollisionInfo>,
     ) {
         self.shape.movement_collision_test(
             self.position,
@@ -45,6 +45,12 @@ impl<'a> ShapePosition<'a> {
 
 pub trait ForEachShapePosition {
     fn for_each<F: FnMut(ShapePosition)>(&self, aabb: Aabb, f: F);
+}
+
+pub struct Movement {
+    pub position: Vector2<f64>,
+    pub velocity: Vector2<f64>,
+    pub can_jump: bool,
 }
 
 impl MovementContext {
@@ -76,10 +82,11 @@ impl MovementContext {
         shape_position: ShapePosition,
         mut movement: Vector2<f64>,
         for_each_shape_position: &F,
-    ) -> Vector2<f64>
+    ) -> Movement
     where
         F: ForEachShapePosition,
     {
+        let mut can_jump = false;
         let mut position = shape_position.position;
         const MAX_ITERATIONS: usize = 16;
         for _ in 0..MAX_ITERATIONS {
@@ -91,6 +98,12 @@ impl MovementContext {
                 movement,
                 for_each_shape_position,
             );
+            if self.closest_collisions
+                .iter()
+                .any(|c| c.moving_edge_channels() & channels::FLOOR != 0)
+            {
+                can_jump = true;
+            }
             match self.closest_collisions.iter().next() {
                 None => {
                     position += movement;
@@ -102,6 +115,10 @@ impl MovementContext {
                 }
             }
         }
-        position
+        Movement {
+            position,
+            velocity: position - shape_position.position,
+            can_jump,
+        }
     }
 }

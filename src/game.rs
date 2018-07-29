@@ -260,6 +260,7 @@ impl GameState {
         movement_context: &mut MovementContext,
     ) {
         let player_id = self.player_id.expect("No player id");
+        let mut can_jump = false;
         if let Some(velocity) = self.velocity.get_mut(&player_id) {
             *velocity = update_player_velocity(*velocity, input_model);
         }
@@ -270,15 +271,14 @@ impl GameState {
                     position: common.position,
                     shape: &common.shape,
                 };
-                let new_position = movement_context.position_after_allowed_movement(
+                let movement = movement_context.position_after_allowed_movement(
                     shape_position,
                     *velocity,
                     self,
                 );
-                changes
-                    .velocity
-                    .push((*id, new_position - common.position));
-                changes.position.push((*id, new_position));
+                changes.velocity.push((*id, movement.velocity));
+                changes.position.push((*id, movement.position));
+                can_jump = can_jump || movement.can_jump;
             }
         }
         for (id, position) in changes.position.drain(..) {
