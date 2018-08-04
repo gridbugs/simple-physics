@@ -7,16 +7,16 @@ pub struct LeftSolidEdge {
     pub end: Vector2<f64>,
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-enum StartOrEnd {
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum StartOrEnd {
     Start,
     End,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-struct EdgeCollisionPosition {
-    which_part_of_other_edge: StartOrEnd,
-    how_far_along_this_edge: f64,
+pub struct EdgeCollisionPosition {
+    pub which_part_of_other_edge: StartOrEnd,
+    pub how_far_along_this_edge: f64,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -67,6 +67,21 @@ impl EdgeCollisions {
             }) => which_part_of_other_edge == *x,
         }
     }
+
+    fn min_edge_collision_position(&self) -> Option<EdgeCollisionPosition> {
+        match self {
+            EdgeCollisions::Zero => None,
+            EdgeCollisions::One(m) => Some(*m),
+            EdgeCollisions::Two { min, .. } => Some(*min),
+        }
+    }
+    fn max_edge_collision_position(&self) -> Option<EdgeCollisionPosition> {
+        match self {
+            EdgeCollisions::Zero => None,
+            EdgeCollisions::One(m) => Some(*m),
+            EdgeCollisions::Two { max, .. } => Some(*max),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -89,10 +104,15 @@ impl LeftSolidEdgeCollision {
     pub fn movement_to_collision(&self, movement_attempt: Vector2<f64>) -> Vector2<f64> {
         movement_attempt * self.movement_multiplier
     }
-
+    pub fn movement_following_collision(
+        &self,
+        movement_attempt: Vector2<f64>,
+    ) -> Vector2<f64> {
+        movement_attempt * (1. - self.movement_multiplier)
+    }
     pub fn slide(&self, movement_attempt: Vector2<f64>) -> Vector2<f64> {
-        let remaining_movement = movement_attempt * (1. - self.movement_multiplier);
-        remaining_movement.project_on(self.edge_vector)
+        self.movement_following_collision(movement_attempt)
+            .project_on(self.edge_vector)
     }
     pub fn moving_start(&self) -> bool {
         self.stationary_edge_collisions
@@ -101,6 +121,12 @@ impl LeftSolidEdgeCollision {
     pub fn moving_end(&self) -> bool {
         self.stationary_edge_collisions
             .collides_with(StartOrEnd::End)
+    }
+    pub fn moving_edge_min_collision_position(&self) -> Option<EdgeCollisionPosition> {
+        self.moving_edge_collisions.min_edge_collision_position()
+    }
+    pub fn moving_edge_max_collision_position(&self) -> Option<EdgeCollisionPosition> {
+        self.moving_edge_collisions.max_edge_collision_position()
     }
 }
 

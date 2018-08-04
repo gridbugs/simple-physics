@@ -222,6 +222,22 @@ impl GameState {
         ));
 
         self.add_static_solid(EntityCommon::new(
+            vec2(600., 498.),
+            Shape::AxisAlignedRect(AxisAlignedRect::new(vec2(20., 20.))),
+            [1., 1., 0.],
+        ));
+        self.add_static_solid(EntityCommon::new(
+            vec2(620., 496.),
+            Shape::AxisAlignedRect(AxisAlignedRect::new(vec2(20., 20.))),
+            [1., 1., 0.],
+        ));
+        self.add_static_solid(EntityCommon::new(
+            vec2(640., 492.),
+            Shape::AxisAlignedRect(AxisAlignedRect::new(vec2(20., 20.))),
+            [1., 1., 0.],
+        ));
+
+        self.add_static_solid(EntityCommon::new(
             vec2(760., 500.),
             Shape::AxisAlignedRect(AxisAlignedRect::new(vec2(20., 20.))),
             [1., 1., 0.],
