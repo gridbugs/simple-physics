@@ -1,6 +1,6 @@
 use aabb::Aabb;
 use axis_aligned_rect::AxisAlignedRect;
-use cgmath::{vec2, ElementWise, InnerSpace, Vector2};
+use cgmath::{ElementWise, InnerSpace, Vector2, vec2};
 use fnv::FnvHashMap;
 use line_segment::LineSegment;
 use loose_quad_tree::LooseQuadTree;
@@ -182,12 +182,12 @@ impl GameState {
     pub fn init_demo(&mut self) {
         self.clear();
         let player_id = self.add_common(EntityCommon::new(
-            vec2(700., 0.),
+            vec2(550., 500. - 64.),
             Shape::AxisAlignedRect(AxisAlignedRect::new_character(vec2(32., 64.))),
             [1., 0., 0.],
         ));
         self.player_id = Some(player_id);
-        self.velocity.insert(player_id, vec2(0., 0.));
+        self.velocity.insert(player_id, vec2(-2., 0.));
 
         self.add_static_solid(EntityCommon::new(
             vec2(700., 200.),
@@ -215,6 +215,12 @@ impl GameState {
             Shape::AxisAlignedRect(AxisAlignedRect::new(vec2(700., 20.))),
             [1., 1., 0.],
         ));
+        self.add_static_solid(EntityCommon::new(
+            vec2(450., 499.),
+            Shape::AxisAlignedRect(AxisAlignedRect::new(vec2(20., 20.))),
+            [1., 1., 0.],
+        ));
+
         self.add_static_solid(EntityCommon::new(
             vec2(760., 500.),
             Shape::AxisAlignedRect(AxisAlignedRect::new(vec2(20., 20.))),
@@ -260,10 +266,7 @@ impl GameState {
         ));
         self.add_static_solid(EntityCommon::new(
             vec2(300., 470.),
-            Shape::LineSegment(LineSegment::new_both_solid(
-                vec2(0., 0.),
-                vec2(32., 32.),
-            )),
+            Shape::LineSegment(LineSegment::new_both_solid(vec2(0., 0.), vec2(32., 32.))),
             [0., 1., 0.],
         ));
     }
@@ -301,10 +304,8 @@ impl GameState {
             }
         }
         if can_jump && input_model.jump_this_frame() {
-            let player_velocity = changes
-                .velocity
-                .entry(player_id)
-                .or_insert(vec2(0., 0.));
+            let player_velocity =
+                changes.velocity.entry(player_id).or_insert(vec2(0., 0.));
             *player_velocity -= vec2(0., 4.);
         }
         for (id, mut velocity) in changes.velocity.drain() {
