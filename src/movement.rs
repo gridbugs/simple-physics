@@ -19,18 +19,17 @@ pub struct ShapePosition<'a> {
 }
 
 fn bottom_collision(collision_info: &CollisionInfo) -> bool {
-    if collision_info.moving_edge().channels & channels::FLOOR != 0 {
+    if collision_info.moving_edge_vector.channels & channels::FLOOR != 0 {
         return true;
     }
 
-    if collision_info.moving_edge().flags & flags::FLOOR_START != 0
-        && collision_info.which_vertices().moving_start()
+    if collision_info.moving_edge_vector.flags & flags::FLOOR_START != 0
+        && collision_info.collision.moving_start()
     {
         return true;
     }
-
-    if collision_info.moving_edge().flags & flags::FLOOR_END != 0
-        && collision_info.which_vertices().moving_end()
+    if collision_info.moving_edge_vector.flags & flags::FLOOR_END != 0
+        && collision_info.collision.moving_end()
     {
         return true;
     }
@@ -44,8 +43,8 @@ fn jump_predicate(collision_info: &CollisionInfo) -> bool {
     }
 
     let dot = collision_info
-        .stationary_edge()
-        .vector()
+        .stationary_edge_vector
+        .vector
         .normalize()
         .dot(vec2(0., 1.))
         .abs();
@@ -145,9 +144,11 @@ impl MovementContext {
                     position += movement;
                     break;
                 }
-                Some(collision_with_slide) => {
-                    position += collision_with_slide.movement_to_collision(movement);
-                    movement = collision_with_slide.slide(movement);
+                Some(collision_info) => {
+                    position += collision_info
+                        .collision
+                        .movement_to_collision(movement);
+                    movement = collision_info.collision.slide(movement);
                 }
             }
         }

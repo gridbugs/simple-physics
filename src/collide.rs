@@ -1,13 +1,13 @@
 use aabb::Aabb;
 use best::BestMultiSet;
 use cgmath::Vector2;
-use left_solid_edge::{EdgeVertexCollisions, LeftSolidEdge, WhichVertices};
+use left_solid_edge::{LeftSolidEdge, LeftSolidEdgeCollision};
 use std::cmp::Ordering;
 
 pub struct CollisionInfo {
-    collision: EdgeVertexCollisions,
-    moving_edge: Edge,
-    stationary_edge: Edge,
+    pub collision: LeftSolidEdgeCollision,
+    pub moving_edge_vector: EdgeVector,
+    pub stationary_edge_vector: EdgeVector,
 }
 
 impl PartialEq for CollisionInfo {
@@ -21,43 +21,32 @@ impl PartialOrd for CollisionInfo {
     }
 }
 
-impl CollisionInfo {
-    pub fn movement_to_collision(&self, movement_attempt: Vector2<f64>) -> Vector2<f64> {
-        self.collision.movement_to_collision(movement_attempt)
-    }
-
-    pub fn slide(&self, movement_attempt: Vector2<f64>) -> Vector2<f64> {
-        self.collision.slide(movement_attempt)
-    }
-
-    pub fn moving_edge(&self) -> Edge {
-        self.moving_edge
-    }
-
-    pub fn stationary_edge(&self) -> Edge {
-        self.stationary_edge
-    }
-
-    pub fn which_vertices(&self) -> WhichVertices {
-        self.collision.which_vertices
-    }
-}
+pub type Flags = u32;
+pub type Channels = u32;
 
 pub mod channels {
-    pub const MAIN: u32 = 1 << 0;
-    pub const FLOOR: u32 = 1 << 1;
+    use super::*;
+    pub const MAIN: Channels = 1 << 0;
+    pub const FLOOR: Channels = 1 << 1;
 }
 
 pub mod flags {
-    pub const FLOOR_END: u32 = 1 << 0;
-    pub const FLOOR_START: u32 = 1 << 1;
+    use super::*;
+    pub const FLOOR_END: Flags = 1 << 0;
+    pub const FLOOR_START: Flags = 1 << 1;
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct Edge {
     pub left_solid_edge: LeftSolidEdge,
-    pub channels: u32,
-    pub flags: u32,
+    pub channels: Channels,
+    pub flags: Flags,
+}
+
+pub struct EdgeVector {
+    pub vector: Vector2<f64>,
+    pub channels: Channels,
+    pub flags: Flags,
 }
 
 impl Edge {
@@ -68,10 +57,10 @@ impl Edge {
             flags: 0,
         }
     }
-    pub fn with_channels(self, channels: u32) -> Self {
+    pub fn with_channels(self, channels: Channels) -> Self {
         Self { channels, ..self }
     }
-    pub fn with_flags(self, flags: u32) -> Self {
+    pub fn with_flags(self, flags: Flags) -> Self {
         Self { flags, ..self }
     }
     pub fn start(&self) -> Vector2<f64> {
@@ -82,6 +71,13 @@ impl Edge {
     }
     pub fn vector(&self) -> Vector2<f64> {
         self.left_solid_edge.vector()
+    }
+    pub fn edge_vector(&self) -> EdgeVector {
+        EdgeVector {
+            vector: self.vector(),
+            channels: self.channels,
+            flags: self.flags,
+        }
     }
 }
 
@@ -121,8 +117,8 @@ pub trait Collide {
                     {
                         let collision_info = CollisionInfo {
                             collision: collision_movement,
-                            moving_edge: moving_rel_edge,
-                            stationary_edge: stationary_rel_edge,
+                            moving_edge_vector: moving_rel_edge.edge_vector(),
+                            stationary_edge_vector: stationary_rel_edge.edge_vector(),
                         };
                         f(collision_info);
                     }
