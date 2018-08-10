@@ -1,12 +1,17 @@
 use aabb::Aabb;
 use best::BestMultiSet;
-use cgmath::{InnerSpace, Vector2, vec2};
-use collide::{channels, flags, CollisionInfo};
+use cgmath::{vec2, InnerSpace, Vector2};
+use collide::{flags, CollisionInfo};
+use left_solid_edge::StartOrEnd;
 use shape::Shape;
 use std::cmp::Ordering;
-use left_solid_edge::StartOrEnd;
 
 const EPSILON: f64 = 0.01;
+
+const JUMP_TEST_MOVEMENT: Vector2<f64> = Vector2 {
+    x: 0.,
+    y: EPSILON,
+};
 
 #[derive(Default)]
 pub struct MovementContext {
@@ -76,44 +81,6 @@ fn bump(collision_info: &CollisionInfo) -> Option<Bump> {
     None
 }
 
-fn bottom_collision(collision_info: &CollisionInfo) -> bool {
-    if collision_info.moving_edge_vector.channels & channels::FLOOR != 0 {
-        return true;
-    }
-
-    if collision_info.moving_edge_vector.flags & flags::FLOOR_START != 0
-        && collision_info.collision.moving_start()
-    {
-        return true;
-    }
-    if collision_info.moving_edge_vector.flags & flags::FLOOR_END != 0
-        && collision_info.collision.moving_end()
-    {
-        return true;
-    }
-
-    false
-}
-
-fn jump_predicate(collision_info: &CollisionInfo) -> bool {
-    if !bottom_collision(collision_info) {
-        return false;
-    }
-
-    let dot = collision_info
-        .stationary_edge_vector
-        .vector
-        .normalize()
-        .dot(vec2(0., 1.))
-        .abs();
-
-    if dot > 0.9 {
-        return false;
-    }
-
-    true
-}
-
 impl<'a> ShapePosition<'a> {
     fn aabb(&self) -> Aabb {
         self.shape.aabb(self.position)
@@ -146,7 +113,6 @@ pub trait ForEachShapePosition {
 pub struct Movement {
     pub position: Vector2<f64>,
     pub velocity: Vector2<f64>,
-    pub can_jump: bool,
 }
 
 enum MovementState {
@@ -159,9 +125,12 @@ enum MovementState {
 
 impl MovementState {
     fn vector(&self) -> Vector2<f64> {
+        use self::MovementState::*;
         match self {
-            MovementState::Bump { bump_movement, .. } => *bump_movement,
-            MovementState::Movement(movement) => *movement,
+            Bump {
+                bump_movement, ..
+            } => *bump_movement,
+            Movement(movement) => *movement,
         }
     }
 }
@@ -190,6 +159,22 @@ impl MovementContext {
         );
     }
 
+    pub fn can_jump<F>(
+        &mut self,
+        shape_position: ShapePosition,
+        for_each_shape_position: &F,
+    ) -> bool
+    where
+        F: ForEachShapePosition,
+    {
+        self.allowed_movement_step(
+            shape_position,
+            JUMP_TEST_MOVEMENT,
+            for_each_shape_position,
+        );
+        !self.closest_collisions.is_empty()
+    }
+
     pub fn position_after_allowed_movement<F>(
         &mut self,
         shape_position: ShapePosition,
@@ -200,7 +185,6 @@ impl MovementContext {
         F: ForEachShapePosition,
     {
         let mut movement_state = MovementState::Movement(movement);
-        let mut can_jump = false;
         let mut position = shape_position.position;
         let mut velocity_correction = vec2(0., 0.);
         const MAX_ITERATIONS: usize = 16;
@@ -223,10 +207,6 @@ impl MovementContext {
                     position += collision_info
                         .collision
                         .movement_to_collision(movement_vector);
-
-                    if self.closest_collisions.iter().any(jump_predicate) {
-                        can_jump = true;
-                    }
 
                     if let Some(max_bump) = self.closest_collisions
                         .iter()
@@ -257,7 +237,8 @@ impl MovementContext {
                 (
                     None,
                     MovementState::Bump {
-                        original_movement, ..
+                        original_movement,
+                        ..
                     },
                 ) => MovementState::Movement(original_movement),
                 (Some(movement), _) => movement,
@@ -266,7 +247,6 @@ impl MovementContext {
         Movement {
             position,
             velocity: position - shape_position.position + velocity_correction,
-            can_jump,
         }
     }
 }

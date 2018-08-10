@@ -57,17 +57,6 @@ impl EdgeCollisions {
         }
     }
 
-    fn collides_with(&self, which_part_of_other_edge: StartOrEnd) -> bool {
-        match self {
-            EdgeCollisions::Zero => false,
-            EdgeCollisions::Two { .. } => true,
-            EdgeCollisions::One(EdgeCollisionPosition {
-                which_part_of_other_edge: x,
-                ..
-            }) => which_part_of_other_edge == *x,
-        }
-    }
-
     fn min_edge_collision_position(&self) -> Option<EdgeCollisionPosition> {
         match self {
             EdgeCollisions::Zero => None,
@@ -114,19 +103,13 @@ impl LeftSolidEdgeCollision {
         self.movement_following_collision(movement_attempt)
             .project_on(self.edge_vector)
     }
-    pub fn moving_start(&self) -> bool {
-        self.stationary_edge_collisions
-            .collides_with(StartOrEnd::Start)
-    }
-    pub fn moving_end(&self) -> bool {
-        self.stationary_edge_collisions
-            .collides_with(StartOrEnd::End)
-    }
     pub fn moving_edge_min_collision_position(&self) -> Option<EdgeCollisionPosition> {
-        self.moving_edge_collisions.min_edge_collision_position()
+        self.moving_edge_collisions
+            .min_edge_collision_position()
     }
     pub fn moving_edge_max_collision_position(&self) -> Option<EdgeCollisionPosition> {
-        self.moving_edge_collisions.max_edge_collision_position()
+        self.moving_edge_collisions
+            .max_edge_collision_position()
     }
 }
 

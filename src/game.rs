@@ -1,6 +1,6 @@
 use aabb::Aabb;
 use axis_aligned_rect::AxisAlignedRect;
-use cgmath::{ElementWise, InnerSpace, Vector2, vec2};
+use cgmath::{vec2, ElementWise, InnerSpace, Vector2};
 use fnv::FnvHashMap;
 use line_segment::LineSegment;
 use loose_quad_tree::LooseQuadTree;
@@ -81,9 +81,14 @@ pub struct RenderUpdate<'a> {
 fn update_player_velocity(
     current_velocity: Vector2<f64>,
     input_model: &InputModel,
+    jumping: bool,
 ) -> Vector2<f64> {
     const MULTIPLIER: Vector2<f64> = Vector2 { x: 0.1, y: 0.5 };
-    current_velocity + input_model.movement().mul_element_wise(MULTIPLIER) + vec2(0., 0.1)
+    const GRAVITY: Vector2<f64> = Vector2 { x: 0., y: 0.1 };
+    const JUMP: Vector2<f64> = Vector2 { x: 0., y: -4. };
+    let vertical_delta = if jumping { JUMP } else { GRAVITY };
+    current_velocity + input_model.movement().mul_element_wise(MULTIPLIER)
+        + vertical_delta
 }
 
 #[derive(Default)]
@@ -281,8 +286,11 @@ impl GameState {
             [0., 1., 0.],
         ));
         self.add_static_solid(EntityCommon::new(
-            vec2(300., 470.),
-            Shape::LineSegment(LineSegment::new_both_solid(vec2(0., 0.), vec2(32., 32.))),
+            vec2(300., 468.),
+            Shape::LineSegment(LineSegment::new_both_solid(
+                vec2(0., 0.),
+                vec2(32., 32.),
+            )),
             [0., 1., 0.],
         ));
     }
@@ -293,9 +301,21 @@ impl GameState {
         movement_context: &mut MovementContext,
     ) {
         let player_id = self.player_id.expect("No player id");
-        let mut can_jump = false;
+        let jumping = if input_model.jump_this_frame() {
+            let common = self.common.get(&player_id).unwrap();
+            let shape_position = ShapePosition {
+                entity_id: player_id,
+                position: common.position,
+                shape: &common.shape,
+            };
+
+            movement_context.can_jump(shape_position, self)
+        } else {
+            false
+        };
+
         if let Some(velocity) = self.velocity.get_mut(&player_id) {
-            *velocity = update_player_velocity(*velocity, input_model);
+            *velocity = update_player_velocity(*velocity, input_model, jumping);
         }
         for (id, velocity) in self.velocity.iter() {
             if let Some(common) = self.common.get(id) {
@@ -311,18 +331,12 @@ impl GameState {
                 );
                 changes.velocity.insert(*id, movement.velocity);
                 changes.position.push((*id, movement.position));
-                can_jump = can_jump || movement.can_jump;
             }
         }
         for (id, position) in changes.position.drain(..) {
             if let Some(common) = self.common.get_mut(&id) {
                 common.position = position;
             }
-        }
-        if can_jump && input_model.jump_this_frame() {
-            let player_velocity =
-                changes.velocity.entry(player_id).or_insert(vec2(0., 0.));
-            *player_velocity -= vec2(0., 4.);
         }
         for (id, mut velocity) in changes.velocity.drain() {
             self.velocity.insert(id, velocity);
