@@ -2,7 +2,7 @@ use aabb::Aabb;
 use axis_aligned_rect;
 use best::BestMultiSet;
 use cgmath::Vector2;
-use collide::{Collide, CollisionInfo};
+use collide::{Collide, Collision};
 use line_segment::LineSegment;
 
 #[derive(Debug, Clone)]
@@ -24,7 +24,7 @@ impl Shape {
         stationary: &Self,
         stationary_position: Vector2<f64>,
         movement_vector: Vector2<f64>,
-        closest_collisions: &mut BestMultiSet<CollisionInfo>,
+        closest_collisions: &mut BestMultiSet<Collision>,
     ) {
         match self {
             &Shape::AxisAlignedRect(ref moving) => match stationary {

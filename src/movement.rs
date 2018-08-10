@@ -1,7 +1,7 @@
 use aabb::Aabb;
 use best::BestMultiSet;
 use cgmath::{vec2, InnerSpace, Vector2};
-use collide::{flags, CollisionInfo};
+use collide::{flags, Collision};
 use left_solid_edge::StartOrEnd;
 use shape::Shape;
 use std::cmp::Ordering;
@@ -15,7 +15,7 @@ const JUMP_TEST_MOVEMENT: Vector2<f64> = Vector2 {
 
 #[derive(Default)]
 pub struct MovementContext {
-    closest_collisions: BestMultiSet<CollisionInfo>,
+    closest_collisions: BestMultiSet<Collision>,
 }
 
 pub type EntityId = u32;
@@ -40,7 +40,7 @@ impl Bump {
     }
 }
 
-fn bump(collision_info: &CollisionInfo) -> Option<Bump> {
+fn bump(collision_info: &Collision) -> Option<Bump> {
     if collision_info.moving_edge_vector.flags & flags::BUMP_START != 0 {
         if let Some(edge_collision_position) = collision_info
             .collision
@@ -94,7 +94,7 @@ impl<'a> ShapePosition<'a> {
         &self,
         other: ShapePosition,
         movement: Vector2<f64>,
-        closest_collisions: &mut BestMultiSet<CollisionInfo>,
+        closest_collisions: &mut BestMultiSet<Collision>,
     ) {
         self.shape.movement_collision_test(
             self.position,

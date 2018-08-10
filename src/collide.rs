@@ -4,18 +4,18 @@ use cgmath::Vector2;
 use left_solid_edge::{LeftSolidEdge, LeftSolidEdgeCollision};
 use std::cmp::Ordering;
 
-pub struct CollisionInfo {
+pub struct Collision {
     pub collision: LeftSolidEdgeCollision,
     pub moving_edge_vector: EdgeVector,
     pub stationary_edge_vector: EdgeVector,
 }
 
-impl PartialEq for CollisionInfo {
+impl PartialEq for Collision {
     fn eq(&self, rhs: &Self) -> bool {
         self.collision.eq(&rhs.collision)
     }
 }
-impl PartialOrd for CollisionInfo {
+impl PartialOrd for Collision {
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
         self.collision.partial_cmp(&rhs.collision)
     }
@@ -101,7 +101,7 @@ pub trait Collide {
     ) where
         Self: Sized,
         StationaryShape: Collide,
-        F: FnMut(CollisionInfo),
+        F: FnMut(Collision),
     {
         self.for_each_left_solid_edge_facing(movement, |moving_rel_edge| {
             let moving_edge = moving_rel_edge.left_solid_edge.add_vector(position);
@@ -117,7 +117,7 @@ pub trait Collide {
                     if let Some(collision_movement) = moving_edge
                         .collide_with_stationary_edge(&stationary_edge, movement)
                     {
-                        let collision_info = CollisionInfo {
+                        let collision_info = Collision {
                             collision: collision_movement,
                             moving_edge_vector: moving_rel_edge.edge_vector(),
                             stationary_edge_vector: stationary_rel_edge.edge_vector(),
@@ -134,7 +134,7 @@ pub trait Collide {
         stationary_shape: &StationaryShape,
         stationary_position: Vector2<f64>,
         movement: Vector2<f64>,
-        closest_collisions: &mut BestMultiSet<CollisionInfo>,
+        closest_collisions: &mut BestMultiSet<Collision>,
     ) where
         Self: Sized,
         StationaryShape: Collide,
