@@ -1,5 +1,5 @@
 use aabb::Aabb;
-use cgmath::{Vector2, vec2};
+use cgmath::{vec2, Vector2};
 use collide::{channels, flags, Collide, Edge};
 use left_solid_edge::EPSILON;
 
@@ -51,13 +51,13 @@ impl Metadata {
     }
     fn left_flags(self) -> u32 {
         match self {
-            Metadata::Character => flags::FLOOR_START | flags::BUMP_START,
+            Metadata::Character => flags::BUMP_START,
             _ => 0,
         }
     }
     fn right_flags(self) -> u32 {
         match self {
-            Metadata::Character => flags::FLOOR_END | flags::BUMP_END,
+            Metadata::Character => flags::BUMP_END,
             _ => 0,
         }
     }

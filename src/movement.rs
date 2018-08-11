@@ -1,12 +1,15 @@
 use aabb::Aabb;
 use best::BestMultiSet;
-use cgmath::{Vector2, vec2};
+use bump::max_bump;
+use cgmath::{vec2, Vector2};
 use collide::Collision;
 use shape::Shape;
-use bump::max_bump;
 
 const EPSILON: f64 = 0.01;
-const JUMP_TEST_MOVEMENT: Vector2<f64> = Vector2 { x: 0., y: EPSILON };
+const JUMP_TEST_MOVEMENT: Vector2<f64> = Vector2 {
+    x: 0.,
+    y: EPSILON,
+};
 
 #[derive(Default)]
 pub struct MovementContext {

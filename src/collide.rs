@@ -4,6 +4,7 @@ use cgmath::Vector2;
 use left_solid_edge::{LeftSolidEdge, LeftSolidEdgeCollision};
 use std::cmp::Ordering;
 
+#[derive(Debug)]
 pub struct Collision {
     pub left_solid_edge_collision: LeftSolidEdgeCollision,
     pub moving_edge_vector: EdgeVector,
@@ -34,8 +35,6 @@ pub mod channels {
 
 pub mod flags {
     use super::*;
-    pub const FLOOR_END: Flags = 1 << 0;
-    pub const FLOOR_START: Flags = 1 << 1;
     pub const BUMP_END: Flags = 1 << 2;
     pub const BUMP_START: Flags = 1 << 3;
 }
@@ -47,6 +46,7 @@ pub struct Edge {
     pub flags: Flags,
 }
 
+#[derive(Debug)]
 pub struct EdgeVector {
     pub vector: Vector2<f64>,
     pub channels: Channels,
