@@ -1,4 +1,4 @@
-use cgmath::{vec2, Vector2};
+use cgmath::{Vector2, vec2};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Aabb {

@@ -104,12 +104,10 @@ impl LeftSolidEdgeCollision {
             .project_on(self.edge_vector)
     }
     pub fn moving_edge_min_collision_position(&self) -> Option<EdgeCollisionPosition> {
-        self.moving_edge_collisions
-            .min_edge_collision_position()
+        self.moving_edge_collisions.min_edge_collision_position()
     }
     pub fn moving_edge_max_collision_position(&self) -> Option<EdgeCollisionPosition> {
-        self.moving_edge_collisions
-            .max_edge_collision_position()
+        self.moving_edge_collisions.max_edge_collision_position()
     }
 }
 

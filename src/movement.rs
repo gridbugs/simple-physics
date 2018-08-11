@@ -1,84 +1,27 @@
 use aabb::Aabb;
 use best::BestMultiSet;
-use cgmath::{vec2, InnerSpace, Vector2};
-use collide::{flags, Collision};
-use left_solid_edge::StartOrEnd;
+use cgmath::{Vector2, vec2};
+use collide::Collision;
 use shape::Shape;
-use std::cmp::Ordering;
+use bump::max_bump;
 
 const EPSILON: f64 = 0.01;
-
-const JUMP_TEST_MOVEMENT: Vector2<f64> = Vector2 {
-    x: 0.,
-    y: EPSILON,
-};
+const JUMP_TEST_MOVEMENT: Vector2<f64> = Vector2 { x: 0., y: EPSILON };
 
 #[derive(Default)]
 pub struct MovementContext {
     closest_collisions: BestMultiSet<Collision>,
 }
 
+pub type ClosestCollisions<'a> = &'a BestMultiSet<Collision>;
+
 pub type EntityId = u32;
-const BUMP_DISTANCE_PX: f64 = 2.;
-const BUMP_DISTANCE_PX2: f64 = BUMP_DISTANCE_PX * BUMP_DISTANCE_PX;
 
 #[derive(Debug)]
 pub struct ShapePosition<'a> {
     pub entity_id: EntityId,
     pub position: Vector2<f64>,
     pub shape: &'a Shape,
-}
-
-struct Bump {
-    distance2: f64,
-    direction: Vector2<f64>,
-}
-
-impl Bump {
-    fn vector(&self) -> Vector2<f64> {
-        self.direction.normalize_to(self.distance2.sqrt())
-    }
-}
-
-fn bump(collision_info: &Collision) -> Option<Bump> {
-    if collision_info.moving_edge_vector.flags & flags::BUMP_START != 0 {
-        if let Some(edge_collision_position) = collision_info
-            .collision
-            .moving_edge_min_collision_position()
-        {
-            if edge_collision_position.which_part_of_other_edge == StartOrEnd::Start {
-                let multiplier = edge_collision_position.how_far_along_this_edge;
-                let distance2 = collision_info.moving_edge_vector.vector.magnitude2()
-                    * multiplier * multiplier;
-                if distance2 <= BUMP_DISTANCE_PX2 {
-                    return Some(Bump {
-                        distance2: distance2 + EPSILON,
-                        direction: collision_info.moving_edge_vector.vector,
-                    });
-                }
-            }
-        }
-    }
-    if collision_info.moving_edge_vector.flags & flags::BUMP_END != 0 {
-        if let Some(edge_collision_position) = collision_info
-            .collision
-            .moving_edge_max_collision_position()
-        {
-            if edge_collision_position.which_part_of_other_edge == StartOrEnd::End {
-                let multiplier = 1. - edge_collision_position.how_far_along_this_edge;
-                let distance2 = collision_info.moving_edge_vector.vector.magnitude2()
-                    * multiplier * multiplier;
-                if distance2 <= BUMP_DISTANCE_PX2 {
-                    return Some(Bump {
-                        distance2: distance2 + EPSILON,
-                        direction: -collision_info.moving_edge_vector.vector,
-                    });
-                }
-            }
-        }
-    }
-
-    None
 }
 
 impl<'a> ShapePosition<'a> {
@@ -115,33 +58,14 @@ pub struct Movement {
     pub velocity: Vector2<f64>,
 }
 
-enum MovementState {
-    Bump {
-        bump_movement: Vector2<f64>,
-        original_movement: Vector2<f64>,
-    },
-    Movement(Vector2<f64>),
-}
-
-impl MovementState {
-    fn vector(&self) -> Vector2<f64> {
-        use self::MovementState::*;
-        match self {
-            Bump {
-                bump_movement, ..
-            } => *bump_movement,
-            Movement(movement) => *movement,
-        }
-    }
-}
-
 impl MovementContext {
-    fn allowed_movement_step<F>(
+    fn closest_collisions<F>(
         &mut self,
         shape_position: ShapePosition,
         movement: Vector2<f64>,
         for_each_shape_position: &F,
-    ) where
+    ) -> ClosestCollisions
+    where
         F: ForEachShapePosition,
     {
         self.closest_collisions.clear();
@@ -157,6 +81,8 @@ impl MovementContext {
                 }
             },
         );
+
+        &self.closest_collisions
     }
 
     pub fn can_jump<F>(
@@ -167,14 +93,12 @@ impl MovementContext {
     where
         F: ForEachShapePosition,
     {
-        self.allowed_movement_step(
+        !self.closest_collisions(
             shape_position,
             JUMP_TEST_MOVEMENT,
             for_each_shape_position,
-        );
-        !self.closest_collisions.is_empty()
+        ).is_empty()
     }
-
     pub fn position_after_allowed_movement<F>(
         &mut self,
         shape_position: ShapePosition,
@@ -184,69 +108,125 @@ impl MovementContext {
     where
         F: ForEachShapePosition,
     {
-        let mut movement_state = MovementState::Movement(movement);
-        let mut position = shape_position.position;
-        let mut velocity_correction = vec2(0., 0.);
-        const MAX_ITERATIONS: usize = 16;
-        for _ in 0..MAX_ITERATIONS {
-            let movement_vector = movement_state.vector();
-            self.allowed_movement_step(
-                ShapePosition {
-                    position,
-                    ..shape_position
-                },
-                movement_vector,
-                for_each_shape_position,
-            );
-            let next_movement = match self.closest_collisions.iter().next() {
-                None => {
-                    position += movement_vector;
-                    None
-                }
-                Some(collision_info) => {
-                    position += collision_info
-                        .collision
-                        .movement_to_collision(movement_vector);
+        let mut state = MovementStateMachine::new(movement, shape_position.position);
+        let env = MovementEnv {
+            for_each_shape_position,
+            original: shape_position,
+        };
+        loop {
+            if let Some(movement) = state.step(&env, self) {
+                return movement;
+            }
+        }
+    }
+}
 
-                    if let Some(max_bump) = self.closest_collisions
-                        .iter()
-                        .filter_map(bump)
-                        .max_by(|a, b| {
-                            a.distance2
-                                .partial_cmp(&b.distance2)
-                                .unwrap_or(Ordering::Less)
-                        }) {
-                        let bump_movement = max_bump.vector();
-                        velocity_correction -= bump_movement;
-                        let next_movement = collision_info
-                            .collision
-                            .movement_following_collision(movement_vector);
-                        Some(MovementState::Bump {
-                            bump_movement,
-                            original_movement: next_movement,
-                        })
-                    } else {
-                        let next_movement =
-                            collision_info.collision.slide(movement_vector);
-                        Some(MovementState::Movement(next_movement))
+struct MovementEnv<'a, F: 'a + ForEachShapePosition> {
+    for_each_shape_position: &'a F,
+    original: ShapePosition<'a>,
+}
+
+impl<'a, F: ForEachShapePosition> MovementEnv<'a, F> {
+    fn shape_position(&self, position: Vector2<f64>) -> ShapePosition {
+        ShapePosition {
+            position,
+            ..self.original
+        }
+    }
+    fn closest_collisions<'b>(
+        &self,
+        position: Vector2<f64>,
+        movement: Vector2<f64>,
+        ctx: &'b mut MovementContext,
+    ) -> ClosestCollisions<'b> {
+        ctx.closest_collisions(
+            self.shape_position(position),
+            movement,
+            self.for_each_shape_position,
+        )
+    }
+}
+
+struct MovementStateMachine {
+    movement: Vector2<f64>,
+    position: Vector2<f64>,
+    bump: Option<Vector2<f64>>,
+    velocity_correction: Vector2<f64>,
+    remaining: u8,
+}
+
+impl MovementStateMachine {
+    fn new(movement: Vector2<f64>, position: Vector2<f64>) -> Self {
+        const MAX_ITERATIONS: u8 = 16;
+        Self {
+            movement,
+            position,
+            bump: None,
+            velocity_correction: vec2(0., 0.),
+            remaining: MAX_ITERATIONS,
+        }
+    }
+    fn to_movement(&self, original_position: Vector2<f64>) -> Movement {
+        Movement {
+            position: self.position,
+            velocity: self.position - original_position + self.velocity_correction,
+        }
+    }
+    fn step<F>(
+        &mut self,
+        env: &MovementEnv<F>,
+        ctx: &mut MovementContext,
+    ) -> Option<Movement>
+    where
+        F: ForEachShapePosition,
+    {
+        if self.remaining == 0 {
+            return Some(self.to_movement(env.original.position));
+        }
+        match self.bump {
+            Some(bump) => {
+                let closest = env.closest_collisions(self.position, bump, ctx);
+                match closest.first() {
+                    Some(_closest) => {
+                        return Some(self.to_movement(env.original.position))
+                    }
+                    None => {
+                        self.position += bump;
+                        self.velocity_correction -= bump;
+                        self.bump = None;
                     }
                 }
-            };
-            movement_state = match (next_movement, movement_state) {
-                (None, MovementState::Movement(_)) => break,
-                (
-                    None,
-                    MovementState::Bump {
-                        original_movement,
-                        ..
-                    },
-                ) => MovementState::Movement(original_movement),
-                (Some(movement), _) => movement,
-            };
-        }
-        Movement {
-            position,
-            velocity: position - shape_position.position + velocity_correction,
-        }
+            }
+            None => {
+                let closest_collisions =
+                    env.closest_collisions(self.position, self.movement, ctx);
+                match closest_collisions.first() {
+                    None => {
+                        self.position += self.movement;
+                        return Some(self.to_movement(env.original.position));
+                    }
+                    Some(closest) => {
+                        self.position += closest
+                            .left_solid_edge_collision
+                            .movement_to_collision(self.movement);
+                        match max_bump(closest_collisions) {
+                            None => {
+                                self.movement = closest
+                                    .left_solid_edge_collision
+                                    .slide(self.movement);
+                            }
+                            Some(max_bump) => {
+                                self.bump = Some(max_bump.vector());
+                                self.movement = closest
+                                    .left_solid_edge_collision
+                                    .movement_following_collision(self.movement);
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        self.remaining -= 1;
+        None
     }
 }

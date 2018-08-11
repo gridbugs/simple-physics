@@ -12,7 +12,7 @@ mod consts {
 
 mod dimensions {
     use super::formats;
-    use cgmath::{vec2, Vector2};
+    use cgmath::{Vector2, vec2};
     use gfx;
     pub fn rtv_dimensions<R: gfx::Resources>(
         rtv: &gfx::handle::RenderTargetView<R, formats::Colour>,

@@ -1,5 +1,5 @@
 use aabb::*;
-use cgmath::{vec2, Vector2};
+use cgmath::{Vector2, vec2};
 use std::num::NonZeroUsize;
 
 #[derive(Debug, Clone)]

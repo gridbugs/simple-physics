@@ -1,5 +1,5 @@
 use aabb::Aabb;
-use cgmath::{vec2, InnerSpace, Vector2};
+use cgmath::{InnerSpace, Vector2, vec2};
 use collide::{Collide, Edge};
 
 const WIDTH: f64 = 0.1;

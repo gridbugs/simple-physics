@@ -5,19 +5,21 @@ use left_solid_edge::{LeftSolidEdge, LeftSolidEdgeCollision};
 use std::cmp::Ordering;
 
 pub struct Collision {
-    pub collision: LeftSolidEdgeCollision,
+    pub left_solid_edge_collision: LeftSolidEdgeCollision,
     pub moving_edge_vector: EdgeVector,
     pub stationary_edge_vector: EdgeVector,
 }
 
 impl PartialEq for Collision {
     fn eq(&self, rhs: &Self) -> bool {
-        self.collision.eq(&rhs.collision)
+        self.left_solid_edge_collision
+            .eq(&rhs.left_solid_edge_collision)
     }
 }
 impl PartialOrd for Collision {
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
-        self.collision.partial_cmp(&rhs.collision)
+        self.left_solid_edge_collision
+            .partial_cmp(&rhs.left_solid_edge_collision)
     }
 }
 
@@ -114,11 +116,11 @@ pub trait Collide {
                     let stationary_edge = stationary_rel_edge
                         .left_solid_edge
                         .add_vector(stationary_position);
-                    if let Some(collision_movement) = moving_edge
+                    if let Some(left_solid_edge_collision) = moving_edge
                         .collide_with_stationary_edge(&stationary_edge, movement)
                     {
                         let collision_info = Collision {
-                            collision: collision_movement,
+                            left_solid_edge_collision,
                             moving_edge_vector: moving_rel_edge.edge_vector(),
                             stationary_edge_vector: stationary_rel_edge.edge_vector(),
                         };

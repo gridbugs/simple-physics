@@ -11,6 +11,7 @@ extern crate glutin;
 
 mod aabb;
 mod axis_aligned_rect;
+mod bump;
 mod collide;
 mod game;
 mod glutin_window;

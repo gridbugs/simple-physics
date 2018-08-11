@@ -1,6 +1,6 @@
 use aabb::Aabb;
 use axis_aligned_rect::AxisAlignedRect;
-use cgmath::{vec2, ElementWise, InnerSpace, Vector2};
+use cgmath::{ElementWise, InnerSpace, Vector2, vec2};
 use fnv::FnvHashMap;
 use line_segment::LineSegment;
 use loose_quad_tree::LooseQuadTree;
@@ -287,10 +287,7 @@ impl GameState {
         ));
         self.add_static_solid(EntityCommon::new(
             vec2(300., 468.),
-            Shape::LineSegment(LineSegment::new_both_solid(
-                vec2(0., 0.),
-                vec2(32., 32.),
-            )),
+            Shape::LineSegment(LineSegment::new_both_solid(vec2(0., 0.), vec2(32., 32.))),
             [0., 1., 0.],
         ));
     }
