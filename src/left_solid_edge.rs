@@ -1,4 +1,4 @@
-use cgmath::{InnerSpace, Vector2, vec2};
+use cgmath::{vec2, InnerSpace, Vector2};
 use std::cmp::Ordering;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -108,11 +108,20 @@ impl LeftSolidEdgeCollision {
         self.movement_following_collision(movement_attempt)
             .project_on(perpendicular_to_edge_vector)
     }
+    pub fn displacement_full_movement(
+        &self,
+        movement_attempt: Vector2<f64>,
+    ) -> Vector2<f64> {
+        let perpendicular_to_edge_vector = vec2(self.edge_vector.y, -self.edge_vector.x);
+        movement_attempt.project_on(perpendicular_to_edge_vector)
+    }
     pub fn moving_edge_min_collision_position(&self) -> Option<EdgeCollisionPosition> {
-        self.moving_edge_collisions.min_edge_collision_position()
+        self.moving_edge_collisions
+            .min_edge_collision_position()
     }
     pub fn moving_edge_max_collision_position(&self) -> Option<EdgeCollisionPosition> {
-        self.moving_edge_collisions.max_edge_collision_position()
+        self.moving_edge_collisions
+            .max_edge_collision_position()
     }
 }
 

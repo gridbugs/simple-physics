@@ -44,7 +44,23 @@ impl Shape {
                     closest_collisions,
                 ),
             },
-            &Shape::LineSegment(_) => panic!(),
+            &Shape::LineSegment(ref moving) => match stationary {
+                &Shape::AxisAlignedRect(ref stationary) => moving
+                    .movement_collision_test(
+                        position,
+                        stationary,
+                        stationary_position,
+                        movement_vector,
+                        closest_collisions,
+                    ),
+                &Shape::LineSegment(ref stationary) => moving.movement_collision_test(
+                    position,
+                    stationary,
+                    stationary_position,
+                    movement_vector,
+                    closest_collisions,
+                ),
+            },
         }
     }
 }

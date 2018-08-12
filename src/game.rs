@@ -1,6 +1,6 @@
 use aabb::Aabb;
 use axis_aligned_rect::AxisAlignedRect;
-use cgmath::{ElementWise, InnerSpace, Vector2, vec2};
+use cgmath::{vec2, ElementWise, InnerSpace, Vector2};
 use fnv::{FnvHashMap, FnvHashSet};
 use line_segment::LineSegment;
 use loose_quad_tree::LooseQuadTree;
@@ -231,7 +231,7 @@ impl GameState {
         self.dynamic_physics.insert(player_id);
 
         let moving_platform_id = self.add_static_solid(EntityCommon::new(
-            vec2(200., 450.),
+            vec2(200., 350.),
             Shape::AxisAlignedRect(AxisAlignedRect::new(vec2(128., 32.))),
             [0., 1., 1.],
         ));
@@ -241,7 +241,10 @@ impl GameState {
 
         let moving_platform_id = self.add_static_solid(EntityCommon::new(
             vec2(700., 450.),
-            Shape::AxisAlignedRect(AxisAlignedRect::new(vec2(128., 32.))),
+            Shape::LineSegment(LineSegment::new_both_solid(
+                vec2(0., 32.),
+                vec2(128., 0.),
+            )),
             [0., 1., 1.],
         ));
         self.moving_platform_ids.push(moving_platform_id);
@@ -339,11 +342,18 @@ impl GameState {
             )),
             [0., 1., 0.],
         ));
-        self.add_static_solid(EntityCommon::new(
-            vec2(300., 468.),
-            Shape::LineSegment(LineSegment::new_both_solid(vec2(0., 0.), vec2(32., 32.))),
+
+        let moving_platform_id = self.add_static_solid(EntityCommon::new(
+            vec2(300., 472.),
+            Shape::LineSegment(LineSegment::new_both_solid(
+                vec2(0., 0.),
+                vec2(32., 32.),
+            )),
             [0., 1., 0.],
         ));
+        self.moving_platform_ids.push(moving_platform_id);
+        self.velocity.insert(moving_platform_id, vec2(0., 0.));
+        self.static_physics.insert(moving_platform_id);
     }
     pub fn update(
         &mut self,
@@ -381,6 +391,10 @@ impl GameState {
         self.velocity.insert(
             self.moving_platform_ids[1],
             vec2(0., ((self.frame_count as f64) * 0.1).sin() * 4.),
+        );
+        self.velocity.insert(
+            self.moving_platform_ids[2],
+            vec2(((self.frame_count as f64) * 0.1).sin() * 5., 0.),
         );
 
         for id in self.dynamic_physics.iter() {
@@ -431,7 +445,9 @@ impl GameState {
                         &DynamicPhysicsShapePositions(self),
                         &mut changes.displacements,
                     );
-                    changes.position.push((*id, common.position + velocity));
+                    changes
+                        .position
+                        .push((*id, common.position + velocity));
                 }
             }
         }

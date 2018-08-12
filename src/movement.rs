@@ -1,12 +1,15 @@
 use aabb::Aabb;
 use best::BestMultiSet;
 use bump::max_bump;
-use cgmath::{InnerSpace, Vector2, vec2};
+use cgmath::{vec2, InnerSpace, Vector2};
 use collide::Collision;
 use shape::Shape;
 
 const EPSILON: f64 = 0.01;
-const JUMP_TEST_MOVEMENT: Vector2<f64> = Vector2 { x: 0., y: EPSILON };
+const JUMP_TEST_MOVEMENT: Vector2<f64> = Vector2 {
+    x: 0.,
+    y: EPSILON,
+};
 
 #[derive(Default)]
 pub struct MovementContext {
@@ -65,14 +68,9 @@ pub struct Displacement {
 
 impl Displacement {
     pub fn combine_velocity(&self, current_velocity: Vector2<f64>) -> Vector2<f64> {
-        let displacement_component = current_velocity.project_on(self.velocity);
-        if displacement_component.magnitude2() < self.velocity.magnitude2() {
-            let lateral_direction = vec2(self.velocity.y, -self.velocity.x);
-            let lateral_component = current_velocity.project_on(lateral_direction);
-            self.velocity + lateral_component
-        } else {
-            current_velocity
-        }
+        let lateral_direction = vec2(self.velocity.y, -self.velocity.x);
+        let lateral_component = current_velocity.project_on(lateral_direction);
+        self.velocity + lateral_component
     }
 }
 
@@ -179,11 +177,15 @@ impl MovementContext {
             movement,
             for_each_shape_position,
             |entity_id, collision| {
-                let displacement_movement =
-                    collision.left_solid_edge_collision.displacement(movement);
+                let displacement_movement = collision
+                    .left_solid_edge_collision
+                    .displacement(movement);
+                let displacement_velocity = collision
+                    .left_solid_edge_collision
+                    .displacement_full_movement(movement);
                 let displacement = Displacement {
                     movement: displacement_movement,
-                    velocity: movement,
+                    velocity: displacement_velocity,
                 };
                 displacements.push((entity_id, displacement));
             },
