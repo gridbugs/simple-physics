@@ -4,7 +4,8 @@ use cgmath::{ElementWise, InnerSpace, Vector2, vec2};
 use fnv::{FnvHashMap, FnvHashSet};
 use line_segment::LineSegment;
 use loose_quad_tree::LooseQuadTree;
-use movement::{EntityId, ForEachShapePosition, MovementContext, ShapePosition};
+use movement::{Displacement, EntityId, ForEachShapePosition, MovementContext,
+               ShapePosition};
 use shape::Shape;
 use std::collections::HashMap;
 
@@ -131,7 +132,7 @@ impl EntityCommon {
 pub struct GameStateChanges {
     position: Vec<(EntityId, Vector2<f64>)>,
     velocity: HashMap<EntityId, Vector2<f64>>,
-    displacements: Vec<(EntityId, Vector2<f64>)>,
+    displacements: Vec<(EntityId, Displacement)>,
 }
 
 pub struct GameState {
@@ -437,7 +438,10 @@ impl GameState {
 
         for (id, displacement) in changes.displacements.drain(..) {
             if let Some(common) = self.common.get_mut(&id) {
-                common.position += displacement;
+                common.position += displacement.movement;
+            }
+            if let Some(velocity) = self.velocity.get_mut(&id) {
+                *velocity = displacement.combine_velocity(*velocity);
             }
         }
 

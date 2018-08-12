@@ -1,7 +1,7 @@
 use aabb::Aabb;
 use best::BestMultiSet;
 use bump::max_bump;
-use cgmath::{Vector2, vec2};
+use cgmath::{InnerSpace, Vector2, vec2};
 use collide::Collision;
 use shape::Shape;
 
@@ -56,6 +56,24 @@ pub trait ForEachShapePosition {
 pub struct Movement {
     pub position: Vector2<f64>,
     pub velocity: Vector2<f64>,
+}
+
+pub struct Displacement {
+    pub movement: Vector2<f64>,
+    pub velocity: Vector2<f64>,
+}
+
+impl Displacement {
+    pub fn combine_velocity(&self, current_velocity: Vector2<f64>) -> Vector2<f64> {
+        let displacement_component = current_velocity.project_on(self.velocity);
+        if displacement_component.magnitude2() < self.velocity.magnitude2() {
+            let lateral_direction = vec2(self.velocity.y, -self.velocity.x);
+            let lateral_component = current_velocity.project_on(lateral_direction);
+            self.velocity + lateral_component
+        } else {
+            current_velocity
+        }
+    }
 }
 
 impl MovementContext {
@@ -152,7 +170,7 @@ impl MovementContext {
         shape_position: ShapePosition,
         movement: Vector2<f64>,
         for_each_shape_position: &F,
-        displacements: &mut Vec<(EntityId, Vector2<f64>)>,
+        displacements: &mut Vec<(EntityId, Displacement)>,
     ) where
         F: ForEachShapePosition,
     {
@@ -163,7 +181,11 @@ impl MovementContext {
             |entity_id, collision| {
                 let displacement_movement =
                     collision.left_solid_edge_collision.displacement(movement);
-                displacements.push((entity_id, displacement_movement));
+                let displacement = Displacement {
+                    movement: displacement_movement,
+                    velocity: movement,
+                };
+                displacements.push((entity_id, displacement));
             },
         );
     }
