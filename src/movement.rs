@@ -161,9 +161,8 @@ impl MovementContext {
             movement,
             for_each_shape_position,
             |entity_id, collision| {
-                let displacement_movement = collision
-                    .left_solid_edge_collision
-                    .movement_following_collision(movement);
+                let displacement_movement =
+                    collision.left_solid_edge_collision.displacement(movement);
                 displacements.push((entity_id, displacement_movement));
             },
         );

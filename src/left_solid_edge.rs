@@ -1,4 +1,4 @@
-use cgmath::{InnerSpace, Vector2};
+use cgmath::{InnerSpace, Vector2, vec2};
 use std::cmp::Ordering;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -102,6 +102,11 @@ impl LeftSolidEdgeCollision {
     pub fn slide(&self, movement_attempt: Vector2<f64>) -> Vector2<f64> {
         self.movement_following_collision(movement_attempt)
             .project_on(self.edge_vector)
+    }
+    pub fn displacement(&self, movement_attempt: Vector2<f64>) -> Vector2<f64> {
+        let perpendicular_to_edge_vector = vec2(self.edge_vector.y, -self.edge_vector.x);
+        self.movement_following_collision(movement_attempt)
+            .project_on(perpendicular_to_edge_vector)
     }
     pub fn moving_edge_min_collision_position(&self) -> Option<EdgeCollisionPosition> {
         self.moving_edge_collisions.min_edge_collision_position()
