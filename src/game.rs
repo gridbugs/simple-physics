@@ -1,7 +1,7 @@
 use aabb::Aabb;
 use axis_aligned_rect::AxisAlignedRect;
-use cgmath::{vec2, ElementWise, InnerSpace, Vector2};
-use fnv::FnvHashMap;
+use cgmath::{ElementWise, InnerSpace, Vector2, vec2};
+use fnv::{FnvHashMap, FnvHashSet};
 use line_segment::LineSegment;
 use loose_quad_tree::LooseQuadTree;
 use movement::{EntityId, ForEachShapePosition, MovementContext, ShapePosition};
@@ -131,29 +131,30 @@ impl EntityCommon {
 pub struct GameStateChanges {
     position: Vec<(EntityId, Vector2<f64>)>,
     velocity: HashMap<EntityId, Vector2<f64>>,
-}
-
-enum PhysicsType {
-    Dynamic,
-    Static,
+    displacements: Vec<(EntityId, Vector2<f64>)>,
 }
 
 pub struct GameState {
     player_id: Option<EntityId>,
-    moving_platform_id: Option<EntityId>,
+    moving_platform_ids: Vec<EntityId>,
     entity_id_allocator: EntityIdAllocator,
     common: FnvHashMap<EntityId, EntityCommon>,
     velocity: FnvHashMap<EntityId, Vector2<f64>>,
-    physics_type: FnvHashMap<EntityId, PhysicsType>,
+    dynamic_physics: FnvHashSet<EntityId>,
+    static_physics: FnvHashSet<EntityId>,
     quad_tree: LooseQuadTree<EntityId>,
     frame_count: u64,
 }
 
-impl ForEachShapePosition for GameState {
+struct AllShapePositions<'a>(&'a GameState);
+struct DynamicPhysicsShapePositions<'a>(&'a GameState);
+
+impl<'a> ForEachShapePosition for AllShapePositions<'a> {
     fn for_each<F: FnMut(ShapePosition)>(&self, aabb: Aabb, mut f: F) {
-        self.quad_tree
+        self.0
+            .quad_tree
             .for_each_intersection(aabb, |_aabb, &entity_id| {
-                let common = self.common.get(&entity_id).unwrap();
+                let common = self.0.common.get(&entity_id).unwrap();
                 let shape_position = ShapePosition {
                     entity_id,
                     shape: &common.shape,
@@ -164,15 +165,34 @@ impl ForEachShapePosition for GameState {
     }
 }
 
+impl<'a> ForEachShapePosition for DynamicPhysicsShapePositions<'a> {
+    fn for_each<F: FnMut(ShapePosition)>(&self, aabb: Aabb, mut f: F) {
+        self.0
+            .quad_tree
+            .for_each_intersection(aabb, |_aabb, &entity_id| {
+                if self.0.dynamic_physics.contains(&entity_id) {
+                    let common = self.0.common.get(&entity_id).unwrap();
+                    let shape_position = ShapePosition {
+                        entity_id,
+                        shape: &common.shape,
+                        position: common.position,
+                    };
+                    f(shape_position);
+                }
+            });
+    }
+}
+
 impl GameState {
     pub fn new(size_hint: Vector2<f64>) -> Self {
         Self {
             player_id: None,
-            moving_platform_id: None,
+            moving_platform_ids: Vec::new(),
             entity_id_allocator: Default::default(),
             common: Default::default(),
             velocity: Default::default(),
-            physics_type: Default::default(),
+            dynamic_physics: Default::default(),
+            static_physics: Default::default(),
             quad_tree: LooseQuadTree::new(size_hint),
             frame_count: 0,
         }
@@ -182,8 +202,10 @@ impl GameState {
         self.entity_id_allocator.reset();
         self.common.clear();
         self.velocity.clear();
-        self.physics_type.clear();
+        self.dynamic_physics.clear();
+        self.static_physics.clear();
         self.quad_tree.clear();
+        self.frame_count = 0;
     }
     fn add_static_solid(&mut self, common: EntityCommon) -> EntityId {
         let id = self.entity_id_allocator.allocate();
@@ -205,18 +227,25 @@ impl GameState {
         ));
         self.player_id = Some(player_id);
         self.velocity.insert(player_id, vec2(0., 0.));
-        self.physics_type
-            .insert(player_id, PhysicsType::Dynamic);
+        self.dynamic_physics.insert(player_id);
 
         let moving_platform_id = self.add_static_solid(EntityCommon::new(
             vec2(200., 450.),
             Shape::AxisAlignedRect(AxisAlignedRect::new(vec2(128., 32.))),
             [0., 1., 1.],
         ));
-        self.moving_platform_id = Some(moving_platform_id);
+        self.moving_platform_ids.push(moving_platform_id);
         self.velocity.insert(moving_platform_id, vec2(0., 0.));
-        self.physics_type
-            .insert(moving_platform_id, PhysicsType::Static);
+        self.static_physics.insert(moving_platform_id);
+
+        let moving_platform_id = self.add_static_solid(EntityCommon::new(
+            vec2(700., 450.),
+            Shape::AxisAlignedRect(AxisAlignedRect::new(vec2(128., 32.))),
+            [0., 1., 1.],
+        ));
+        self.moving_platform_ids.push(moving_platform_id);
+        self.velocity.insert(moving_platform_id, vec2(0., 0.));
+        self.static_physics.insert(moving_platform_id);
 
         self.add_static_solid(EntityCommon::new(
             vec2(700., 200.),
@@ -311,10 +340,7 @@ impl GameState {
         ));
         self.add_static_solid(EntityCommon::new(
             vec2(300., 468.),
-            Shape::LineSegment(LineSegment::new_both_solid(
-                vec2(0., 0.),
-                vec2(32., 32.),
-            )),
+            Shape::LineSegment(LineSegment::new_both_solid(vec2(0., 0.), vec2(32., 32.))),
             [0., 1., 0.],
         ));
     }
@@ -330,8 +356,6 @@ impl GameState {
         }
 
         let player_id = self.player_id.expect("No player id");
-        let moving_platform_id = self.moving_platform_id
-            .expect("No moving platform id");
         let jumping = if input_model.jump_this_frame() {
             let common = self.common.get(&player_id).unwrap();
             let shape_position = ShapePosition {
@@ -340,7 +364,7 @@ impl GameState {
                 shape: &common.shape,
             };
 
-            movement_context.can_jump(shape_position, self)
+            movement_context.can_jump(shape_position, &AllShapePositions(self))
         } else {
             false
         };
@@ -350,43 +374,77 @@ impl GameState {
         }
 
         self.velocity.insert(
-            moving_platform_id,
+            self.moving_platform_ids[0],
             vec2(((self.frame_count as f64) * 0.05).sin() * 2., 0.),
         );
+        self.velocity.insert(
+            self.moving_platform_ids[1],
+            vec2(0., ((self.frame_count as f64) * 0.1).sin() * 4.),
+        );
 
-        for (id, velocity) in self.velocity.iter() {
-            if let Some(common) = self.common.get(id) {
-                match self.physics_type.get(id) {
-                    Some(PhysicsType::Dynamic) => {
-                        let shape_position = ShapePosition {
-                            entity_id: *id,
-                            position: common.position,
-                            shape: &common.shape,
-                        };
-                        let movement = movement_context.position_after_allowed_movement(
-                            shape_position,
-                            *velocity,
-                            self,
-                        );
-                        changes.velocity.insert(*id, movement.velocity);
-                        changes.position.push((*id, movement.position));
-                    }
-                    Some(PhysicsType::Static) => {
-                        changes
-                            .position
-                            .push((*id, common.position + velocity));
-                    }
-                    None => (),
+        for id in self.dynamic_physics.iter() {
+            if let Some(velocity) = self.velocity.get(id) {
+                if let Some(common) = self.common.get(id) {
+                    let shape_position = ShapePosition {
+                        entity_id: *id,
+                        position: common.position,
+                        shape: &common.shape,
+                    };
+                    let movement = movement_context.position_after_allowed_movement(
+                        shape_position,
+                        *velocity,
+                        &AllShapePositions(self),
+                    );
+                    changes.velocity.insert(*id, movement.velocity);
+                    changes.position.push((*id, movement.position));
                 }
             }
         }
+
         for (id, position) in changes.position.drain(..) {
             if let Some(common) = self.common.get_mut(&id) {
                 common.position = position;
             }
         }
-        for (id, mut velocity) in changes.velocity.drain() {
+
+        for (id, velocity) in changes.velocity.drain() {
             self.velocity.insert(id, velocity);
+        }
+
+        self.quad_tree.clear();
+        for (id, common) in self.common.iter() {
+            self.quad_tree.insert(common.aabb(), *id);
+        }
+
+        for id in self.static_physics.iter() {
+            if let Some(velocity) = self.velocity.get(id) {
+                if let Some(common) = self.common.get(id) {
+                    let shape_position = ShapePosition {
+                        entity_id: *id,
+                        position: common.position,
+                        shape: &common.shape,
+                    };
+                    movement_context.displacement_after_movement(
+                        shape_position,
+                        *velocity,
+                        &DynamicPhysicsShapePositions(self),
+                        &mut changes.displacements,
+                    );
+                    changes.position.push((*id, common.position + velocity));
+                }
+            }
+        }
+
+        for (id, displacement) in changes.displacements.drain(..) {
+            if let Some(common) = self.common.get_mut(&id) {
+                common.position += displacement;
+            }
+        }
+
+        for (id, position) in changes.position.drain(..) {
+            if let Some(common) = self.common.get_mut(&id) {
+                common.position = position;
+            }
         }
 
         self.frame_count += 1;

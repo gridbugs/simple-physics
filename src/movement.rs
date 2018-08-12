@@ -1,15 +1,12 @@
 use aabb::Aabb;
 use best::BestMultiSet;
 use bump::max_bump;
-use cgmath::{vec2, Vector2};
+use cgmath::{Vector2, vec2};
 use collide::Collision;
 use shape::Shape;
 
 const EPSILON: f64 = 0.01;
-const JUMP_TEST_MOVEMENT: Vector2<f64> = Vector2 {
-    x: 0.,
-    y: EPSILON,
-};
+const JUMP_TEST_MOVEMENT: Vector2<f64> = Vector2 { x: 0., y: EPSILON };
 
 #[derive(Default)]
 pub struct MovementContext {
@@ -62,6 +59,34 @@ pub struct Movement {
 }
 
 impl MovementContext {
+    fn for_each_collision<F, G>(
+        &mut self,
+        shape_position: ShapePosition,
+        movement: Vector2<f64>,
+        for_each_shape_position: &F,
+        mut f: G,
+    ) where
+        F: ForEachShapePosition,
+        G: FnMut(EntityId, Collision),
+    {
+        self.closest_collisions.clear();
+        for_each_shape_position.for_each(
+            shape_position.movement_aabb(movement),
+            |other_shape_position: ShapePosition| {
+                let other_entity_id = other_shape_position.entity_id;
+                if other_entity_id != shape_position.entity_id {
+                    shape_position.movement_collision_test(
+                        other_shape_position,
+                        movement,
+                        &mut self.closest_collisions,
+                    );
+                    if let Some(collision) = self.closest_collisions.drain().next() {
+                        f(other_entity_id, collision);
+                    }
+                }
+            },
+        );
+    }
     fn closest_collisions<F>(
         &mut self,
         shape_position: ShapePosition,
@@ -121,6 +146,27 @@ impl MovementContext {
                 return movement;
             }
         }
+    }
+    pub fn displacement_after_movement<F>(
+        &mut self,
+        shape_position: ShapePosition,
+        movement: Vector2<f64>,
+        for_each_shape_position: &F,
+        displacements: &mut Vec<(EntityId, Vector2<f64>)>,
+    ) where
+        F: ForEachShapePosition,
+    {
+        self.for_each_collision(
+            shape_position,
+            movement,
+            for_each_shape_position,
+            |entity_id, collision| {
+                let displacement_movement = collision
+                    .left_solid_edge_collision
+                    .movement_following_collision(movement);
+                displacements.push((entity_id, displacement_movement));
+            },
+        );
     }
 }
 
