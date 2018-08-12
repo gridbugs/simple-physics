@@ -1,4 +1,4 @@
-use cgmath::{vec2, InnerSpace, Vector2};
+use cgmath::{InnerSpace, Vector2, vec2};
 use std::cmp::Ordering;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -81,15 +81,10 @@ pub struct LeftSolidEdgeCollision {
     edge_vector: Vector2<f64>,
 }
 
-impl PartialOrd for LeftSolidEdgeCollision {
-    fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
-        self.movement_multiplier
-            .abs()
-            .partial_cmp(&rhs.movement_multiplier.abs())
-    }
-}
-
 impl LeftSolidEdgeCollision {
+    pub fn movement_multiplier(&self) -> f64 {
+        self.movement_multiplier
+    }
     pub fn movement_to_collision(&self, movement_attempt: Vector2<f64>) -> Vector2<f64> {
         movement_attempt * self.movement_multiplier
     }
@@ -116,12 +111,10 @@ impl LeftSolidEdgeCollision {
         movement_attempt.project_on(perpendicular_to_edge_vector)
     }
     pub fn moving_edge_min_collision_position(&self) -> Option<EdgeCollisionPosition> {
-        self.moving_edge_collisions
-            .min_edge_collision_position()
+        self.moving_edge_collisions.min_edge_collision_position()
     }
     pub fn moving_edge_max_collision_position(&self) -> Option<EdgeCollisionPosition> {
-        self.moving_edge_collisions
-            .max_edge_collision_position()
+        self.moving_edge_collisions.max_edge_collision_position()
     }
 }
 
@@ -259,7 +252,7 @@ impl LeftSolidEdge {
             })?;
 
         let movement_filter = |c: VertexCollision| {
-            if c.movement_multiplier > min_movement {
+            if c.movement_multiplier > min_movement + EPSILON {
                 None
             } else {
                 Some(c)

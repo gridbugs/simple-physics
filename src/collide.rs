@@ -4,24 +4,13 @@ use cgmath::Vector2;
 use left_solid_edge::{LeftSolidEdge, LeftSolidEdgeCollision};
 use std::cmp::Ordering;
 
+const EPSILON: f64 = 0.001;
+
 #[derive(Debug)]
 pub struct Collision {
     pub left_solid_edge_collision: LeftSolidEdgeCollision,
     pub moving_edge_vector: EdgeVector,
     pub stationary_edge_vector: EdgeVector,
-}
-
-impl PartialEq for Collision {
-    fn eq(&self, rhs: &Self) -> bool {
-        self.left_solid_edge_collision
-            .eq(&rhs.left_solid_edge_collision)
-    }
-}
-impl PartialOrd for Collision {
-    fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
-        self.left_solid_edge_collision
-            .partial_cmp(&rhs.left_solid_edge_collision)
-    }
 }
 
 pub type Flags = u32;
@@ -119,12 +108,12 @@ pub trait Collide {
                     if let Some(left_solid_edge_collision) = moving_edge
                         .collide_with_stationary_edge(&stationary_edge, movement)
                     {
-                        let collision_info = Collision {
+                        let collision = Collision {
                             left_solid_edge_collision,
                             moving_edge_vector: moving_rel_edge.edge_vector(),
                             stationary_edge_vector: stationary_rel_edge.edge_vector(),
                         };
-                        f(collision_info);
+                        f(collision);
                     }
                 },
             );
@@ -146,8 +135,18 @@ pub trait Collide {
             stationary_shape,
             stationary_position,
             movement,
-            |collision_movement| {
-                closest_collisions.insert_lt(collision_movement);
+            |collision| {
+                closest_collisions.insert_lt_by(collision, |a, b| {
+                    let delta = a.left_solid_edge_collision.movement_multiplier()
+                        - b.left_solid_edge_collision.movement_multiplier();
+                    if delta.abs() < EPSILON {
+                        Ordering::Equal
+                    } else if delta > 0. {
+                        Ordering::Greater
+                    } else {
+                        Ordering::Less
+                    }
+                });
             },
         );
     }
