@@ -110,6 +110,8 @@ fn main() {
             Some(ExternalEvent::Reset) => game_state.init_demo(),
             None => (),
         }
+        input_model.after_process();
+
         game_state.update(&input_model, &mut game_changes, &mut movement_context);
         {
             let mut frame = renderer.prepare_frame(&mut factory);
@@ -133,6 +135,5 @@ fn main() {
         encoder.flush(&mut device);
         window.swap_buffers().expect("Failed to swap buffers");
         device.cleanup();
-        input_model.end_frame();
     }
 }

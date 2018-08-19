@@ -12,13 +12,14 @@ fn clamp(value: f64, min: f64, max: f64) -> f64 {
     value.max(min).min(max)
 }
 
+#[derive(Debug)]
 pub struct InputModel {
     left: f64,
     right: f64,
     up: f64,
     down: f64,
     jump_current: bool,
-    jump_previous: bool,
+    jump_count: Option<u64>,
 }
 
 impl Default for InputModel {
@@ -29,7 +30,7 @@ impl Default for InputModel {
             up: 0.,
             down: 0.,
             jump_current: false,
-            jump_previous: false,
+            jump_count: None,
         }
     }
 }
@@ -64,11 +65,15 @@ impl InputModel {
             raw
         }
     }
-    fn jump_this_frame(&self) -> bool {
-        self.jump_current && !self.jump_previous
-    }
-    pub fn end_frame(&mut self) {
-        self.jump_previous = self.jump_current
+    pub fn after_process(&mut self) {
+        if self.jump_current {
+            self.jump_count = match self.jump_count {
+                Some(count) => Some(count + 1),
+                None => Some(0),
+            }
+        } else {
+            self.jump_count = None;
+        }
     }
 }
 
@@ -78,28 +83,34 @@ pub struct RenderUpdate<'a> {
     pub colour: [f32; 3],
 }
 
+fn jump_frame_count_to_velocity(count: u64) -> Option<f64> {
+    const MAX_COUNT: u64 = 6;
+    const MULTIPLIER: f64 = 0.4;
+    if count >= MAX_COUNT {
+        None
+    } else {
+        Some(((MAX_COUNT - count) as f64) * MULTIPLIER)
+    }
+}
+
 fn update_player_velocity(
     current_velocity: Vector2<f64>,
     input_model: &InputModel,
     max_platform_velocity: Option<Vector2<f64>>,
+    jump: &JumpStateMachine,
 ) -> Vector2<f64> {
     const MULTIPLIER: Vector2<f64> = Vector2 { x: 4., y: 0.5 };
     const GRAVITY: Vector2<f64> = Vector2 { x: 0., y: 0.5 };
-    const JUMP: Vector2<f64> = Vector2 { x: 0., y: -14.0 };
     const MAX_LATERAL: f64 = 10.;
     const DECAY: Vector2<f64> = Vector2 { x: 0.0, y: 1. };
 
-    let (current_velocity_relative, platform_velocity, can_jump) =
+    let (current_velocity_relative, platform_velocity) =
         if let Some(max_platform_velocity) = max_platform_velocity {
             let current_velocity_relative =
                 (current_velocity - max_platform_velocity).mul_element_wise(DECAY);
-            (current_velocity_relative, max_platform_velocity, true)
+            (current_velocity_relative, max_platform_velocity)
         } else {
-            (
-                current_velocity.mul_element_wise(DECAY),
-                vec2(0., 0.),
-                false,
-            )
+            (current_velocity.mul_element_wise(DECAY), vec2(0., 0.))
         };
 
     let input_movement = input_model.movement().mul_element_wise(MULTIPLIER);
@@ -110,8 +121,13 @@ fn update_player_velocity(
         MAX_LATERAL,
     );
 
-    let jumping = can_jump && input_model.jump_this_frame();
-    let vertical_delta = if jumping { JUMP } else { GRAVITY };
+    let vertical_delta = match jump {
+        JumpStateMachine::NotJumping => GRAVITY,
+        JumpStateMachine::JumpingForFrames(n) => match jump_frame_count_to_velocity(*n) {
+            Some(y) => vec2(0., -y),
+            None => GRAVITY,
+        },
+    };
     let vertical_velocity_relative = current_velocity_relative.y + vertical_delta.y;
 
     let velocity_relative = vec2(
@@ -165,6 +181,32 @@ pub struct GameStateChanges {
     displacements: Vec<(EntityId, Displacement)>,
 }
 
+enum JumpStateMachine {
+    NotJumping,
+    JumpingForFrames(u64),
+}
+
+impl JumpStateMachine {
+    pub fn step(&mut self, can_jump: bool, input: &InputModel) {
+        if let Some(jump_count) = input.jump_count {
+            if jump_count == 0 {
+                if can_jump {
+                    *self = JumpStateMachine::JumpingForFrames(0);
+                } else {
+                    *self = JumpStateMachine::NotJumping;
+                }
+            } else {
+                match self {
+                    JumpStateMachine::NotJumping => (),
+                    JumpStateMachine::JumpingForFrames(ref mut n) => *n += 1,
+                }
+            }
+        } else {
+            *self = JumpStateMachine::NotJumping;
+        }
+    }
+}
+
 pub struct GameState {
     player_id: Option<EntityId>,
     moving_platform_ids: Vec<EntityId>,
@@ -174,6 +216,7 @@ pub struct GameState {
     dynamic_physics: FnvHashSet<EntityId>,
     static_physics: FnvHashSet<EntityId>,
     quad_tree: LooseQuadTree<EntityId>,
+    jump: FnvHashMap<EntityId, JumpStateMachine>,
     frame_count: u64,
 }
 
@@ -225,6 +268,7 @@ impl GameState {
             dynamic_physics: Default::default(),
             static_physics: Default::default(),
             quad_tree: LooseQuadTree::new(size_hint),
+            jump: Default::default(),
             frame_count: 0,
         }
     }
@@ -236,6 +280,7 @@ impl GameState {
         self.dynamic_physics.clear();
         self.static_physics.clear();
         self.quad_tree.clear();
+        self.jump.clear();
         self.frame_count = 0;
     }
     fn add_static_solid(&mut self, common: EntityCommon) -> EntityId {
@@ -259,7 +304,8 @@ impl GameState {
         self.player_id = Some(player_id);
         self.velocity.insert(player_id, vec2(0., 0.));
         self.dynamic_physics.insert(player_id);
-
+        self.jump
+            .insert(player_id, JumpStateMachine::NotJumping);
         let moving_platform_id = self.add_static_solid(EntityCommon::new(
             vec2(200., 350.),
             Shape::AxisAlignedRect(AxisAlignedRect::new(vec2(128., 32.))),
@@ -423,12 +469,24 @@ impl GameState {
                     .collisions_below(player_shape_position, &AllShapePositions(self))
             };
 
-            let max_platform_velocity = collisions_below_player
-                .max_velocity(|id| self.velocity.get(&id).cloned());
+            let jump = self.jump
+                .get_mut(&player_id)
+                .expect("No jump for player");
+
+            jump.step(collisions_below_player.can_jump(), input_model);
+
+            let max_platform_velocity = {
+                let velocity = &mut self.velocity;
+                collisions_below_player.max_velocity(|id| velocity.get(&id).cloned())
+            };
 
             if let Some(velocity) = self.velocity.get_mut(&player_id) {
-                *velocity =
-                    update_player_velocity(*velocity, input_model, max_platform_velocity);
+                *velocity = update_player_velocity(
+                    *velocity,
+                    input_model,
+                    max_platform_velocity,
+                    jump,
+                );
             }
         }
 

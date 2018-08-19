@@ -1,8 +1,8 @@
 use cgmath::{InnerSpace, Vector2};
-use std::cmp::Ordering;
+use collide::{flags, Collision};
 use left_solid_edge::StartOrEnd;
 use movement::ClosestCollisions;
-use collide::{flags, Collision};
+use std::cmp::Ordering;
 
 const EPSILON: f64 = 0.01;
 const BUMP_DISTANCE_PX: f64 = 2.;
@@ -20,11 +20,14 @@ impl Bump {
 }
 
 pub fn max_bump(closest_collisions: ClosestCollisions) -> Option<Bump> {
-    closest_collisions.iter().filter_map(bump).max_by(|a, b| {
-        a.distance2
-            .partial_cmp(&b.distance2)
-            .unwrap_or(Ordering::Less)
-    })
+    closest_collisions
+        .iter()
+        .filter_map(bump)
+        .max_by(|a, b| {
+            a.distance2
+                .partial_cmp(&b.distance2)
+                .unwrap_or(Ordering::Less)
+        })
 }
 
 fn bump(collision_info: &Collision) -> Option<Bump> {

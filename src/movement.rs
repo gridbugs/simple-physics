@@ -18,6 +18,9 @@ pub type ClosestCollisions<'a> = &'a BestMultiSet<Collision>;
 pub struct CollisionsBelow<'a>(ClosestCollisions<'a>);
 
 impl<'a> CollisionsBelow<'a> {
+    pub fn can_jump(&self) -> bool {
+        !self.0.is_empty()
+    }
     pub fn max_velocity(
         &self,
         get_velocity: impl Fn(EntityId) -> Option<Vector2<f64>>,
