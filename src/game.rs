@@ -85,12 +85,14 @@ fn update_player_velocity(
 ) -> Vector2<f64> {
     const MULTIPLIER: Vector2<f64> = Vector2 { x: 1., y: 0.5 };
     const GRAVITY: Vector2<f64> = Vector2 { x: 0., y: 0.5 };
-    const JUMP: Vector2<f64> = Vector2 { x: 0., y: -10.0 };
-    const MAX_LATERAL: f64 = 4.;
+    const JUMP: Vector2<f64> = Vector2 { x: 0., y: -14.0 };
+    const MAX_LATERAL: f64 = 10.;
+    const LATERAL_DECAY: f64 = 0.5;
 
     let (current_velocity_relative, platform_velocity, can_jump) =
         if let Some(max_platform_velocity) = max_platform_velocity {
-            let current_velocity_relative = current_velocity - max_platform_velocity;
+            let current_velocity_relative =
+                (current_velocity - max_platform_velocity) * LATERAL_DECAY;
             (current_velocity_relative, max_platform_velocity, true)
         } else {
             (current_velocity, vec2(0., 0.), false)
@@ -102,7 +104,7 @@ fn update_player_velocity(
         current_velocity_relative.x + input_movement.x,
         -MAX_LATERAL,
         MAX_LATERAL,
-    ) * 0.8;
+    );
 
     let jumping = can_jump && input_model.jump_this_frame();
     let vertical_delta = if jumping { JUMP } else { GRAVITY };

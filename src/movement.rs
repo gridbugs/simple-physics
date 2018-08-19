@@ -6,7 +6,7 @@ use collide::Collision;
 use shape::ShapePosition;
 use std::cmp::Ordering;
 
-const BELOW_TEST_MOVEMENT: Vector2<f64> = Vector2 { x: 0., y: 0.01 };
+const BELOW_TEST_MOVEMENT: Vector2<f64> = Vector2 { x: 0., y: 1. };
 
 #[derive(Default)]
 pub struct MovementContext {
