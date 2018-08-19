@@ -81,14 +81,39 @@ pub struct RenderUpdate<'a> {
 fn update_player_velocity(
     current_velocity: Vector2<f64>,
     input_model: &InputModel,
-    jumping: bool,
+    max_platform_velocity: Option<Vector2<f64>>,
 ) -> Vector2<f64> {
-    const MULTIPLIER: Vector2<f64> = Vector2 { x: 0.1, y: 0.5 };
-    const GRAVITY: Vector2<f64> = Vector2 { x: 0., y: 0.1 };
-    const JUMP: Vector2<f64> = Vector2 { x: 0., y: -4. };
+    const MULTIPLIER: Vector2<f64> = Vector2 { x: 1., y: 0.5 };
+    const GRAVITY: Vector2<f64> = Vector2 { x: 0., y: 0.5 };
+    const JUMP: Vector2<f64> = Vector2 { x: 0., y: -10.0 };
+    const MAX_LATERAL: f64 = 4.;
+
+    let (current_velocity_relative, platform_velocity, can_jump) =
+        if let Some(max_platform_velocity) = max_platform_velocity {
+            let current_velocity_relative = current_velocity - max_platform_velocity;
+            (current_velocity_relative, max_platform_velocity, true)
+        } else {
+            (current_velocity, vec2(0., 0.), false)
+        };
+
+    let input_movement = input_model.movement().mul_element_wise(MULTIPLIER);
+
+    let horizontal_velocity_relative = clamp(
+        current_velocity_relative.x + input_movement.x,
+        -MAX_LATERAL,
+        MAX_LATERAL,
+    ) * 0.8;
+
+    let jumping = can_jump && input_model.jump_this_frame();
     let vertical_delta = if jumping { JUMP } else { GRAVITY };
-    current_velocity + input_model.movement().mul_element_wise(MULTIPLIER)
-        + vertical_delta
+    let vertical_velocity_relative = current_velocity_relative.y + vertical_delta.y;
+
+    let velocity_relative = vec2(
+        horizontal_velocity_relative,
+        vertical_velocity_relative,
+    );
+
+    platform_velocity + velocity_relative
 }
 
 #[derive(Default)]
@@ -366,21 +391,26 @@ impl GameState {
         }
 
         let player_id = self.player_id.expect("No player id");
-        let jumping = if input_model.jump_this_frame() {
-            let common = self.common.get(&player_id).unwrap();
-            let shape_position = ShapePosition {
-                entity_id: player_id,
-                position: common.position,
-                shape: &common.shape,
+        {
+            let collisions_below_player = {
+                let player_common = self.common.get(&player_id).unwrap();
+                let player_shape_position = ShapePosition {
+                    entity_id: player_id,
+                    position: player_common.position,
+                    shape: &player_common.shape,
+                };
+
+                movement_context
+                    .collisions_below(player_shape_position, &AllShapePositions(self))
             };
 
-            movement_context.can_jump(shape_position, &AllShapePositions(self))
-        } else {
-            false
-        };
+            let max_platform_velocity = collisions_below_player
+                .max_velocity(|id| self.velocity.get(&id).cloned());
 
-        if let Some(velocity) = self.velocity.get_mut(&player_id) {
-            *velocity = update_player_velocity(*velocity, input_model, jumping);
+            if let Some(velocity) = self.velocity.get_mut(&player_id) {
+                *velocity =
+                    update_player_velocity(*velocity, input_model, max_platform_velocity);
+            }
         }
 
         self.velocity.insert(

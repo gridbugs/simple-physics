@@ -12,6 +12,8 @@ pub struct Collision {
     pub left_solid_edge_collision: LeftSolidEdgeCollision,
     pub moving_edge_vector: EdgeVector,
     pub stationary_edge_vector: EdgeVector,
+    pub moving_entity_id: EntityId,
+    pub stationary_entity_id: EntityId,
 }
 
 pub type Flags = u32;
@@ -112,6 +114,8 @@ impl<'a, C: Collide> CollidePosition<'a, C> {
                                 left_solid_edge_collision,
                                 moving_edge_vector: moving_rel_edge.edge_vector(),
                                 stationary_edge_vector: stationary_rel_edge.edge_vector(),
+                                moving_entity_id: self.entity_id,
+                                stationary_entity_id: stationary.entity_id,
                             };
                             f(collision_info);
                         }

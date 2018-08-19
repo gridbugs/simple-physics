@@ -4,12 +4,9 @@ use bump::max_bump;
 use cgmath::{vec2, InnerSpace, Vector2};
 use collide::Collision;
 use shape::ShapePosition;
+use std::cmp::Ordering;
 
-const EPSILON: f64 = 0.01;
-const JUMP_TEST_MOVEMENT: Vector2<f64> = Vector2 {
-    x: 0.,
-    y: EPSILON,
-};
+const BELOW_TEST_MOVEMENT: Vector2<f64> = Vector2 { x: 0., y: 0.01 };
 
 #[derive(Default)]
 pub struct MovementContext {
@@ -17,6 +14,30 @@ pub struct MovementContext {
 }
 
 pub type ClosestCollisions<'a> = &'a BestMultiSet<Collision>;
+
+pub struct CollisionsBelow<'a>(ClosestCollisions<'a>);
+
+impl<'a> CollisionsBelow<'a> {
+    pub fn max_velocity(
+        &self,
+        get_velocity: impl Fn(EntityId) -> Option<Vector2<f64>>,
+    ) -> Option<Vector2<f64>> {
+        if self.0.is_empty() {
+            return None;
+        }
+        Some(
+            self.0
+                .iter()
+                .filter_map(|collision| get_velocity(collision.stationary_entity_id))
+                .max_by(|a, b| {
+                    a.magnitude2()
+                        .partial_cmp(&b.magnitude2())
+                        .unwrap_or(Ordering::Equal)
+                })
+                .unwrap_or(vec2(0., 0.)),
+        )
+    }
+}
 
 pub type EntityId = u32;
 
@@ -97,19 +118,19 @@ impl MovementContext {
         &self.closest_collisions
     }
 
-    pub fn can_jump<F>(
+    pub fn collisions_below<F>(
         &mut self,
         shape_position: ShapePosition,
         for_each_shape_position: &F,
-    ) -> bool
+    ) -> CollisionsBelow
     where
         F: ForEachShapePosition,
     {
-        !self.closest_collisions(
+        CollisionsBelow(self.closest_collisions(
             shape_position,
-            JUMP_TEST_MOVEMENT,
+            BELOW_TEST_MOVEMENT,
             for_each_shape_position,
-        ).is_empty()
+        ))
     }
     pub fn position_after_allowed_movement<F>(
         &mut self,
