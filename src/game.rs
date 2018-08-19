@@ -4,9 +4,8 @@ use cgmath::{vec2, ElementWise, InnerSpace, Vector2};
 use fnv::{FnvHashMap, FnvHashSet};
 use line_segment::LineSegment;
 use loose_quad_tree::LooseQuadTree;
-use movement::{Displacement, EntityId, ForEachShapePosition, MovementContext,
-               ShapePosition};
-use shape::Shape;
+use movement::{Displacement, EntityId, ForEachShapePosition, MovementContext};
+use shape::{Shape, ShapePosition};
 use std::collections::HashMap;
 
 fn clamp(value: f64, min: f64, max: f64) -> f64 {

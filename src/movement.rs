@@ -3,7 +3,7 @@ use best::BestMultiSet;
 use bump::max_bump;
 use cgmath::{vec2, InnerSpace, Vector2};
 use collide::Collision;
-use shape::Shape;
+use shape::ShapePosition;
 
 const EPSILON: f64 = 0.01;
 const JUMP_TEST_MOVEMENT: Vector2<f64> = Vector2 {
@@ -19,38 +19,6 @@ pub struct MovementContext {
 pub type ClosestCollisions<'a> = &'a BestMultiSet<Collision>;
 
 pub type EntityId = u32;
-
-#[derive(Debug)]
-pub struct ShapePosition<'a> {
-    pub entity_id: EntityId,
-    pub position: Vector2<f64>,
-    pub shape: &'a Shape,
-}
-
-impl<'a> ShapePosition<'a> {
-    fn aabb(&self) -> Aabb {
-        self.shape.aabb(self.position)
-    }
-    fn movement_aabb(&self, movement: Vector2<f64>) -> Aabb {
-        let current_aabb = self.aabb();
-        let moved_aabb = self.shape.aabb(self.position + movement);
-        current_aabb.union(&moved_aabb)
-    }
-    fn movement_collision_test(
-        &self,
-        other: ShapePosition,
-        movement: Vector2<f64>,
-        closest_collisions: &mut BestMultiSet<Collision>,
-    ) {
-        self.shape.movement_collision_test(
-            self.position,
-            other.shape,
-            other.position,
-            movement,
-            closest_collisions,
-        )
-    }
-}
 
 pub trait ForEachShapePosition {
     fn for_each<F: FnMut(ShapePosition)>(&self, aabb: Aabb, f: F);

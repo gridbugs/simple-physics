@@ -2,6 +2,7 @@ use aabb::Aabb;
 use best::BestMultiSet;
 use cgmath::Vector2;
 use left_solid_edge::{LeftSolidEdge, LeftSolidEdgeCollision};
+use movement::EntityId;
 use std::cmp::Ordering;
 
 const EPSILON: f64 = 0.001;
@@ -74,6 +75,65 @@ impl Edge {
     }
 }
 
+pub struct CollidePosition<'a, C: 'a + Collide> {
+    pub collide: &'a C,
+    pub position: Vector2<f64>,
+    pub entity_id: EntityId,
+}
+
+impl<'a, C: Collide> CollidePosition<'a, C> {
+    fn for_each_movement_collision<Stationary, F>(
+        &self,
+        stationary: CollidePosition<Stationary>,
+        movement: Vector2<f64>,
+        mut f: F,
+    ) where
+        Stationary: Collide,
+        F: FnMut(Collision),
+    {
+        self.collide
+            .for_each_left_solid_edge_facing(movement, |moving_rel_edge| {
+                let moving_edge = moving_rel_edge
+                    .left_solid_edge
+                    .add_vector(self.position);
+                stationary.collide.for_each_left_solid_edge_facing(
+                    -movement,
+                    |stationary_rel_edge| {
+                        if moving_rel_edge.channels & stationary_rel_edge.channels == 0 {
+                            return;
+                        }
+                        let stationary_edge = stationary_rel_edge
+                            .left_solid_edge
+                            .add_vector(stationary.position);
+                        if let Some(left_solid_edge_collision) = moving_edge
+                            .collide_with_stationary_edge(&stationary_edge, movement)
+                        {
+                            let collision_info = Collision {
+                                left_solid_edge_collision,
+                                moving_edge_vector: moving_rel_edge.edge_vector(),
+                                stationary_edge_vector: stationary_rel_edge.edge_vector(),
+                            };
+                            f(collision_info);
+                        }
+                    },
+                );
+            });
+    }
+
+    pub fn movement_collision_test<Stationary>(
+        &self,
+        stationary: CollidePosition<Stationary>,
+        movement: Vector2<f64>,
+        closest_collisions: &mut BestMultiSet<Collision>,
+    ) where
+        Stationary: Collide,
+    {
+        self.for_each_movement_collision(stationary, movement, |collision_movement| {
+            closest_collisions.insert_lt(collision_movement);
+        });
+    }
+}
+
 pub trait Collide {
     fn aabb(&self, top_left: Vector2<f64>) -> Aabb;
     fn for_each_left_solid_edge_facing<F: FnMut(Edge)>(
@@ -82,16 +142,16 @@ pub trait Collide {
         f: F,
     );
 
-    fn for_each_movement_collision<StationaryShape, F>(
+    fn for_each_movement_collision<Stationary, F>(
         &self,
         position: Vector2<f64>,
-        stationary_shape: &StationaryShape,
+        stationary_shape: &Stationary,
         stationary_position: Vector2<f64>,
         movement: Vector2<f64>,
         mut f: F,
     ) where
         Self: Sized,
-        StationaryShape: Collide,
+        Stationary: Collide,
         F: FnMut(Collision),
     {
         self.for_each_left_solid_edge_facing(movement, |moving_rel_edge| {
@@ -119,16 +179,16 @@ pub trait Collide {
             );
         });
     }
-    fn movement_collision_test<StationaryShape>(
+    fn movement_collision_test<Stationary>(
         &self,
         position: Vector2<f64>,
-        stationary_shape: &StationaryShape,
+        stationary_shape: &Stationary,
         stationary_position: Vector2<f64>,
         movement: Vector2<f64>,
         closest_collisions: &mut BestMultiSet<Collision>,
     ) where
         Self: Sized,
-        StationaryShape: Collide,
+        Stationary: Collide,
     {
         self.for_each_movement_collision(
             position,
