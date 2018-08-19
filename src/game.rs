@@ -83,19 +83,23 @@ fn update_player_velocity(
     input_model: &InputModel,
     max_platform_velocity: Option<Vector2<f64>>,
 ) -> Vector2<f64> {
-    const MULTIPLIER: Vector2<f64> = Vector2 { x: 1., y: 0.5 };
+    const MULTIPLIER: Vector2<f64> = Vector2 { x: 4., y: 0.5 };
     const GRAVITY: Vector2<f64> = Vector2 { x: 0., y: 0.5 };
     const JUMP: Vector2<f64> = Vector2 { x: 0., y: -14.0 };
     const MAX_LATERAL: f64 = 10.;
-    const LATERAL_DECAY: f64 = 0.5;
+    const DECAY: Vector2<f64> = Vector2 { x: 0.0, y: 1. };
 
     let (current_velocity_relative, platform_velocity, can_jump) =
         if let Some(max_platform_velocity) = max_platform_velocity {
             let current_velocity_relative =
-                (current_velocity - max_platform_velocity) * LATERAL_DECAY;
+                (current_velocity - max_platform_velocity).mul_element_wise(DECAY);
             (current_velocity_relative, max_platform_velocity, true)
         } else {
-            (current_velocity, vec2(0., 0.), false)
+            (
+                current_velocity.mul_element_wise(DECAY),
+                vec2(0., 0.),
+                false,
+            )
         };
 
     let input_movement = input_model.movement().mul_element_wise(MULTIPLIER);
@@ -392,6 +396,19 @@ impl GameState {
             self.quad_tree.insert(common.aabb(), *id);
         }
 
+        self.velocity.insert(
+            self.moving_platform_ids[0],
+            vec2(((self.frame_count as f64) * 0.05).sin() * 2., 0.),
+        );
+        self.velocity.insert(
+            self.moving_platform_ids[1],
+            vec2(0., ((self.frame_count as f64) * 0.1).sin() * 4.),
+        );
+        self.velocity.insert(
+            self.moving_platform_ids[2],
+            vec2(((self.frame_count as f64) * 0.1).sin() * 5., 0.),
+        );
+
         let player_id = self.player_id.expect("No player id");
         {
             let collisions_below_player = {
@@ -414,19 +431,6 @@ impl GameState {
                     update_player_velocity(*velocity, input_model, max_platform_velocity);
             }
         }
-
-        self.velocity.insert(
-            self.moving_platform_ids[0],
-            vec2(((self.frame_count as f64) * 0.05).sin() * 2., 0.),
-        );
-        self.velocity.insert(
-            self.moving_platform_ids[1],
-            vec2(0., ((self.frame_count as f64) * 0.1).sin() * 4.),
-        );
-        self.velocity.insert(
-            self.moving_platform_ids[2],
-            vec2(((self.frame_count as f64) * 0.1).sin() * 5., 0.),
-        );
 
         for id in self.dynamic_physics.iter() {
             if let Some(velocity) = self.velocity.get(id) {
